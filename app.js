@@ -1,0 +1,257 @@
+// SpendWise — Milestone 1
+// The array below is temporary sample data. Later, we'll store transactions in a database.
+const transactions = [
+  { id: 1, name: 'Monthly allowance', category: 'Salary', date: '2026-11-01', amount: 20000, type: 'income' },
+  { id: 2, name: 'Freelance design work', category: 'Freelance', date: '2026-11-01', amount: 5000, type: 'income' },
+  { id: 3, name: 'Groceries at Nature’s Basket', category: 'Food', date: '2026-11-01', amount: 1800, type: 'expense' },
+  { id: 4, name: 'New headphones', category: 'Shopping', date: '2026-10-30', amount: 2500, type: 'expense' },
+  { id: 5, name: 'Metro card recharge', category: 'Transport', date: '2026-10-29', amount: 900, type: 'expense' },
+  { id: 6, name: 'Online course', category: 'Education', date: '2026-10-27', amount: 2000, type: 'expense' },
+  { id: 7, name: 'Lunch with friends', category: 'Food', date: '2026-10-25', amount: 850, type: 'expense' },
+  { id: 8, name: 'Monthly phone bill', category: 'Bills', date: '2026-10-23', amount: 650, type: 'expense' },
+  { id: 9, name: 'Cafe study session', category: 'Food', date: '2026-10-20', amount: 450, type: 'expense' },
+  { id: 10, name: 'Auto rides', category: 'Transport', date: '2026-10-18', amount: 700, type: 'expense' },
+  { id: 11, name: 'Notebook and pens', category: 'Education', date: '2026-10-16', amount: 300, type: 'expense' },
+  { id: 12, name: 'Skincare', category: 'Shopping', date: '2026-10-12', amount: 1800, type: 'expense' },
+  { id: 13, name: 'Snacks', category: 'Food', date: '2026-10-08', amount: 900, type: 'expense' },
+  { id: 14, name: 'Movie tickets', category: 'Other', date: '2026-10-04', amount: 900, type: 'expense' }
+];
+
+const categoryColors = {
+  Food: '#E8A36D', Shopping: '#A49AE3', Transport: '#7BA9DF',
+  Education: '#69B88A', Bills: '#D5BD70', Health: '#DF8E9B',
+  Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE'
+};
+const categoryIcons = {
+  Food: '♨', Shopping: '◇', Transport: '↗', Education: '▤', Bills: '▣',
+  Health: '+', Salary: '↓', Freelance: '✳', Other: '•••'
+};
+const money = amount => new Intl.NumberFormat('en-IN', {
+  style: 'currency', currency: 'INR', maximumFractionDigits: 0
+}).format(amount);
+const prettyDate = date => new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', {
+  day: '2-digit', month: 'short', year: 'numeric'
+});
+const sum = list => list.reduce((total, item) => total + item.amount, 0);
+
+const incomeValue = document.querySelector('#income-value');
+const expenseValue = document.querySelector('#expense-value');
+const balanceValue = document.querySelector('#balance-value');
+const savingsValue = document.querySelector('#savings-value');
+const savingsFill = document.querySelector('#savings-track-fill');
+const donutTotal = document.querySelector('#donut-total');
+const transactionBody = document.querySelector('#transactions-body');
+const categoryLegend = document.querySelector('#category-legend');
+const insightsList = document.querySelector('#insights-list');
+const transactionCount = document.querySelector('#transaction-count');
+const modal = document.querySelector('#transaction-modal');
+const form = document.querySelector('#transaction-form');
+const searchInput = document.querySelector('#search-input');
+const filterButton = document.querySelector('#filter-button');
+const toast = document.querySelector('#toast');
+
+let currentFilter = 'all';
+let showAll = false;
+let spendingChart = null;
+let toastTimeout;
+
+function getTotals() {
+  const income = sum(transactions.filter(item => item.type === 'income'));
+  const expenses = sum(transactions.filter(item => item.type === 'expense'));
+  const balance = income - expenses;
+  const savingsRate = income > 0 ? Math.round((balance / income) * 100) : 0;
+  return { income, expenses, balance, savingsRate };
+}
+
+function renderSummary() {
+  const totals = getTotals();
+  incomeValue.textContent = money(totals.income);
+  expenseValue.textContent = money(totals.expenses);
+  balanceValue.textContent = money(totals.balance);
+  savingsValue.textContent = `${totals.savingsRate}%`;
+  savingsFill.style.width = `${Math.max(0, Math.min(100, totals.savingsRate))}%`;
+  donutTotal.textContent = money(totals.expenses);
+  document.querySelector('#balance-caption').textContent = totals.balance >= 0
+    ? 'Your income minus expenses' : 'Expenses are higher than income';
+}
+
+function getExpenseCategories() {
+  const totals = {};
+  transactions.filter(item => item.type === 'expense').forEach(item => {
+    totals[item.category] = (totals[item.category] || 0) + item.amount;
+  });
+  return Object.entries(totals).sort((a, b) => b[1] - a[1]);
+}
+
+function renderChart() {
+  const categories = getExpenseCategories();
+  const canvas = document.querySelector('#spending-chart');
+  if (spendingChart) spendingChart.destroy();
+  spendingChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: categories.map(([category]) => category),
+      datasets: [{
+        data: categories.map(([, amount]) => amount),
+        backgroundColor: categories.map(([category]) => categoryColors[category] || categoryColors.Other),
+        borderWidth: 3,
+        borderColor: '#ffffff',
+        hoverOffset: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '76%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: context => ` ${context.label}: ${money(context.raw)}` }
+      } }
+    }
+  });
+  categoryLegend.innerHTML = categories.slice(0, 5).map(([category, amount]) => `
+    <div class="legend-item">
+      <span class="legend-dot" style="background:${categoryColors[category] || categoryColors.Other}"></span>
+      <span class="legend-name">${escapeHTML(category)}</span>
+      <span class="legend-amount">${money(amount)}</span>
+    </div>`).join('');
+}
+
+function getInsights() {
+  const expenses = transactions.filter(item => item.type === 'expense');
+  const categories = getExpenseCategories();
+  const totals = getTotals();
+  const insights = [];
+  if (categories.length) {
+    const [topCategory, topAmount] = categories[0];
+    const share = totals.expenses ? Math.round(topAmount / totals.expenses * 100) : 0;
+    insights.push({ icon: '↗', warm: false, title: `${topCategory} is your top category`, text: `${money(topAmount)} of your spending is in ${topCategory.toLowerCase()} (${share}% of expenses).` });
+  }
+  const expenseCount = expenses.length;
+  const average = expenseCount ? totals.expenses / expenseCount : 0;
+  if (expenseCount) {
+    insights.push({ icon: '◎', warm: true, title: 'Your average transaction', text: `Your average expense is ${money(Math.round(average))} across ${expenseCount} recorded purchases.` });
+  }
+  if (totals.income > 0) {
+    insights.push({ icon: totals.balance >= 0 ? '✦' : '!', warm: false, title: totals.balance >= 0 ? 'You have a positive balance' : 'Spending is above income', text: totals.balance >= 0 ? `${money(totals.balance)} remains after recorded transactions.` : `Your recorded expenses exceed income by ${money(Math.abs(totals.balance))}.` });
+  }
+  return insights;
+}
+
+function renderInsights() {
+  insightsList.innerHTML = getInsights().map(item => `
+    <div class="insight-item">
+      <span class="insight-item-icon ${item.warm ? 'warm' : ''}">${item.icon}</span>
+      <div><strong>${escapeHTML(item.title)}</strong><p>${escapeHTML(item.text)}</p></div>
+    </div>`).join('');
+}
+
+function renderTransactions() {
+  const searchTerm = searchInput.value.trim().toLowerCase();
+  const filtered = transactions
+    .filter(item => currentFilter === 'all' || item.type === currentFilter)
+    .filter(item => `${item.name} ${item.category} ${item.date}`.toLowerCase().includes(searchTerm))
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  const visible = showAll ? filtered : filtered.slice(0, 6);
+  if (!visible.length) {
+    transactionBody.innerHTML = '<tr><td colspan="5" class="empty-state">No transactions match your search.</td></tr>';
+  } else {
+    transactionBody.innerHTML = visible.map(item => {
+      const iconClass = item.type === 'income' ? 'income' : item.category.toLowerCase();
+      const sign = item.type === 'income' ? '+' : '−';
+      return `<tr>
+        <td><div class="transaction-name"><span class="transaction-icon ${iconClass}">${categoryIcons[item.category] || '•'}</span>${escapeHTML(item.name)}</div></td>
+        <td><span class="category-pill">${escapeHTML(item.category)}</span></td>
+        <td>${prettyDate(item.date)}</td>
+        <td class="amount ${item.type === 'expense' ? 'negative' : ''}">${sign}${money(item.amount)}</td>
+        <td><button class="row-menu" data-delete-id="${item.id}" aria-label="Delete ${escapeHTML(item.name)}" title="Delete transaction">···</button></td>
+      </tr>`;
+    }).join('');
+  }
+  transactionCount.textContent = `Showing ${visible.length} of ${filtered.length} transaction${filtered.length === 1 ? '' : 's'}`;
+  document.querySelector('#show-all-button').classList.toggle('hidden', filtered.length <= 6 || showAll);
+  document.querySelector('#show-all-button').textContent = 'View all transactions →';
+}
+
+function renderApp() {
+  renderSummary();
+  renderChart();
+  renderInsights();
+  renderTransactions();
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[char]);
+}
+
+function openModal() {
+  form.reset();
+  form.elements.date.value = new Date().toISOString().slice(0, 10);
+  document.querySelector('#form-error').textContent = '';
+  modal.classList.remove('hidden');
+  form.elements.name.focus();
+}
+function closeModal() { modal.classList.add('hidden'); }
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('visible'), 2600);
+}
+
+document.querySelector('#open-form-button').addEventListener('click', openModal);
+document.querySelector('#close-modal-button').addEventListener('click', closeModal);
+document.querySelector('#cancel-modal-button').addEventListener('click', closeModal);
+modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
+
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  const formData = new FormData(form);
+  const name = String(formData.get('name')).trim();
+  const amount = Number(formData.get('amount'));
+  const type = String(formData.get('type'));
+  const category = String(formData.get('category'));
+  const date = String(formData.get('date'));
+  const error = document.querySelector('#form-error');
+  if (!name || !Number.isFinite(amount) || amount <= 0 || !date) {
+    error.textContent = 'Enter a name, a positive amount, and a date.';
+    return;
+  }
+  transactions.push({ id: Date.now(), name, amount, type, category, date });
+  closeModal();
+  renderApp();
+  showToast('Transaction added successfully.');
+});
+
+searchInput.addEventListener('input', renderTransactions);
+filterButton.addEventListener('click', () => {
+  const filters = ['all', 'expense', 'income'];
+  const labels = ['All types', 'Expenses only', 'Income only'];
+  const nextIndex = (filters.indexOf(currentFilter) + 1) % filters.length;
+  currentFilter = filters[nextIndex];
+  filterButton.innerHTML = `${labels[nextIndex]} <span>⌄</span>`;
+  showAll = false;
+  renderTransactions();
+});
+document.querySelector('#show-all-button').addEventListener('click', () => {
+  showAll = true;
+  renderTransactions();
+});
+transactionBody.addEventListener('click', event => {
+  const button = event.target.closest('[data-delete-id]');
+  if (!button) return;
+  const id = Number(button.dataset.deleteId);
+  const index = transactions.findIndex(item => item.id === id);
+  if (index < 0) return;
+  const [removed] = transactions.splice(index, 1);
+  renderApp();
+  showToast(`Removed “${removed.name}”.`);
+});
+document.querySelector('#period-button').addEventListener('click', () => {
+  showToast('This demo currently displays all sample dates. Month filtering is a future improvement.');
+});
+
+// Draw the first view from the sample transaction array.
+renderApp();
