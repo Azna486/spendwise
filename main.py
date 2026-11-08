@@ -21,6 +21,17 @@ def db():
     return conn
 
 
+TRANSACTIONS_TABLE = '''CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    date TEXT NOT NULL,
+    amount REAL NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense', 'savings')),
+    user_id INTEGER REFERENCES users(id)
+)'''
+
+
 def init_db():
     with db() as conn:
         conn.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -28,19 +39,20 @@ def init_db():
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL
         )''')
-        conn.execute('''CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            category TEXT NOT NULL,
-            date TEXT NOT NULL,
-            amount REAL NOT NULL,
-            type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-            user_id INTEGER REFERENCES users(id)
-        )''')
+        conn.execute(TRANSACTIONS_TABLE)
         # Older databases were made before users existed: add the user_id column if it's missing.
         columns = [row['name'] for row in conn.execute('PRAGMA table_info(transactions)')]
         if 'user_id' not in columns:
             conn.execute('ALTER TABLE transactions ADD COLUMN user_id INTEGER REFERENCES users(id)')
+        # Older databases only allowed 'income' and 'expense'. SQLite can't change that rule in place,
+        # so we rebuild the table with the new rule and copy every row across.
+        table_sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'transactions'").fetchone()['sql']
+        if "'savings'" not in table_sql:
+            conn.execute('ALTER TABLE transactions RENAME TO transactions_old')
+            conn.execute(TRANSACTIONS_TABLE)
+            conn.execute('INSERT INTO transactions (id, name, category, date, amount, type, user_id) '
+                         'SELECT id, name, category, date, amount, type, user_id FROM transactions_old')
+            conn.execute('DROP TABLE transactions_old')
 
 
 def login_required(view):
@@ -148,8 +160,10 @@ def add_transaction():
     category = str(data.get('category', 'Other'))
     date = str(data.get('date', ''))
     tx_type = data.get('type')
-    if not name or amount <= 0 or not date or tx_type not in ('income', 'expense'):
+    if not name or amount <= 0 or not date or tx_type not in ('income', 'expense', 'savings'):
         return jsonify({'error': 'Invalid transaction'}), 400
+    if tx_type == 'income':
+        category = 'Income'   # income has no category
     with db() as conn:
         cur = conn.execute(
             'INSERT INTO transactions (name, category, date, amount, type, user_id) VALUES (?, ?, ?, ?, ?, ?)',

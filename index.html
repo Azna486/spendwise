@@ -71,9 +71,9 @@
           <div class="mini-bars expense-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
         </article>
         <article class="summary-card">
-          <div class="card-top"><span class="card-label">Savings rate</span><span class="metric-icon savings-icon">％</span></div>
-          <div class="summary-value" id="savings-value">52%</div>
-          <div class="card-foot"><span class="mini-trend positive">↗</span><span>Income saved so far</span></div>
+          <div class="card-top"><span class="card-label">Saved &amp; invested</span><span class="metric-icon savings-icon">％</span></div>
+          <div class="summary-value" id="savings-value">₹0</div>
+          <div class="card-foot"><span class="mini-trend positive">↗</span><span id="savings-caption">0% of income set aside</span></div>
           <div class="savings-track"><span id="savings-track-fill"></span></div>
         </article>
       </section>
@@ -103,8 +103,8 @@
     <form class="transaction-form" id="transaction-form">
       <div class="modal-heading"><div><p class="eyebrow">YOUR MONEY, YOUR WAY</p><h2 id="modal-title">Add a transaction</h2></div><button type="button" class="close-button" id="close-modal-button" aria-label="Close form">×</button></div>
       <label class="field-label">Transaction name<input name="name" required maxlength="60" placeholder="e.g. Coffee with friends" /></label>
-      <div class="form-row"><label class="field-label">Amount (₹)<input name="amount" required type="number" min="1" step="0.01" placeholder="250" /></label><label class="field-label">Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option></select></label></div>
-      <div class="form-row"><label class="field-label">Category<select name="category"><option>Food</option><option>Shopping</option><option>Transport</option><option>Education</option><option>Bills</option><option>Health</option><option>Salary</option><option>Freelance</option><option>Other</option></select></label><label class="field-label">Date<input name="date" type="date" required /></label></div>
+      <div class="form-row"><label class="field-label">Amount (₹)<input name="amount" required type="number" min="1" step="0.01" placeholder="250" /></label><label class="field-label">Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></label></div>
+      <div class="form-row"><label class="field-label" id="category-field">Category<select name="category"><option>Food</option><option>Shopping</option><option>Transport</option><option>Education</option><option>Bills</option><option>Health</option><option>Other</option></select></label><label class="field-label">Date<input name="date" type="date" required /></label></div>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="modal-actions"><button type="button" class="secondary-button" id="cancel-modal-button">Cancel</button><button class="primary-button" type="submit">Save transaction <span>→</span></button></div>
     </form>

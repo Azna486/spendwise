@@ -19,11 +19,13 @@ let transactions = [];
 const categoryColors = {
   Food: '#E8A36D', Shopping: '#A49AE3', Transport: '#7BA9DF',
   Education: '#69B88A', Bills: '#D5BD70', Health: '#DF8E9B',
-  Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE'
+  Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE',
+  Savings: '#8E8FD8', Stocks: '#6B71BD', 'Emergency fund': '#B3A9E6'
 };
 const categoryIcons = {
   Food: '♨', Shopping: '◇', Transport: '↗', Education: '▤', Bills: '▣',
-  Health: '+', Salary: '↓', Freelance: '✳', Other: '•••'
+  Health: '+', Salary: '↓', Freelance: '✳', Other: '•••',
+  Income: '↓', Savings: '◈', Stocks: '↟', 'Emergency fund': '⛑'
 };
 const money = amount => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 0
@@ -57,9 +59,10 @@ let toastTimeout;
 function getTotals() {
   const income = sum(transactions.filter(item => item.type === 'income'));
   const expenses = sum(transactions.filter(item => item.type === 'expense'));
-  const balance = income - expenses;
-  const savingsRate = income > 0 ? Math.round((balance / income) * 100) : 0;
-  return { income, expenses, balance, savingsRate };
+  const savings = sum(transactions.filter(item => item.type === 'savings'));
+  const balance = income - expenses - savings; // money left to spend
+  const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
+  return { income, expenses, savings, balance, savingsRate };
 }
 
 function renderSummary() {
@@ -67,11 +70,12 @@ function renderSummary() {
   incomeValue.textContent = money(totals.income);
   expenseValue.textContent = money(totals.expenses);
   balanceValue.textContent = money(totals.balance);
-  savingsValue.textContent = `${totals.savingsRate}%`;
+  savingsValue.textContent = money(totals.savings);
+  document.querySelector('#savings-caption').textContent = `${totals.savingsRate}% of income set aside`;
   savingsFill.style.width = `${Math.max(0, Math.min(100, totals.savingsRate))}%`;
   donutTotal.textContent = money(totals.expenses);
   document.querySelector('#balance-caption').textContent = totals.balance >= 0
-    ? 'Your income minus expenses' : 'Expenses are higher than income';
+    ? 'Income minus expenses and savings' : 'Expenses and savings are higher than income';
 }
 
 function getExpenseCategories() {
@@ -131,7 +135,7 @@ function getInsights() {
     insights.push({ icon: '◎', warm: true, title: 'Your average transaction', text: `Your average expense is ${money(Math.round(average))} across ${expenseCount} recorded purchases.` });
   }
   if (totals.income > 0) {
-    insights.push({ icon: totals.balance >= 0 ? '✦' : '!', warm: false, title: totals.balance >= 0 ? 'You have a positive balance' : 'Spending is above income', text: totals.balance >= 0 ? `${money(totals.balance)} remains after recorded transactions.` : `Your recorded expenses exceed income by ${money(Math.abs(totals.balance))}.` });
+    insights.push({ icon: totals.balance >= 0 ? '✦' : '!', warm: false, title: totals.balance >= 0 ? 'You have a positive balance' : 'Spending is above income', text: totals.balance >= 0 ? `${money(totals.balance)} is left to spend after expenses and savings.` : `Your expenses and savings exceed income by ${money(Math.abs(totals.balance))}.` });
   }
   return insights;
 }
@@ -155,13 +159,14 @@ function renderTransactions() {
     transactionBody.innerHTML = '<tr><td colspan="5" class="empty-state">No transactions match your search.</td></tr>';
   } else {
     transactionBody.innerHTML = visible.map(item => {
-      const iconClass = item.type === 'income' ? 'income' : item.category.toLowerCase();
-      const sign = item.type === 'income' ? '+' : '−';
+      const iconClass = item.type === 'expense' ? item.category.toLowerCase() : item.type;
+      const sign = { income: '+', expense: '−', savings: '' }[item.type];
+      const amountClass = { income: '', expense: 'negative', savings: 'saved' }[item.type];
       return `<tr>
         <td><div class="transaction-name"><span class="transaction-icon ${iconClass}">${categoryIcons[item.category] || '•'}</span>${escapeHTML(item.name)}</div></td>
         <td><span class="category-pill">${escapeHTML(item.category)}</span></td>
         <td>${prettyDate(item.date)}</td>
-        <td class="amount ${item.type === 'expense' ? 'negative' : ''}">${sign}${money(item.amount)}</td>
+        <td class="amount ${amountClass}">${sign}${money(item.amount)}</td>
         <td><button class="row-menu" data-delete-id="${item.id}" aria-label="Delete ${escapeHTML(item.name)}" title="Delete transaction">···</button></td>
       </tr>`;
     }).join('');
@@ -184,8 +189,23 @@ function escapeHTML(value) {
   })[char]);
 }
 
+// Each type has its own category list. Income has none, so its box is hidden.
+const categoriesByType = {
+  expense: ['Food', 'Shopping', 'Transport', 'Education', 'Bills', 'Health', 'Other'],
+  savings: ['Savings', 'Stocks', 'Emergency fund']
+};
+const categoryField = document.querySelector('#category-field');
+function updateCategoryField() {
+  const type = form.elements.type.value;
+  categoryField.classList.toggle('hidden', type === 'income');
+  if (type === 'income') return;
+  form.elements.category.innerHTML = categoriesByType[type]
+    .map(category => `<option>${category}</option>`).join('');
+}
+form.elements.type.addEventListener('change', updateCategoryField);
 function openModal() {
   form.reset();
+  updateCategoryField();
   form.elements.date.value = new Date().toISOString().slice(0, 10);
   document.querySelector('#form-error').textContent = '';
   modal.classList.remove('hidden');
@@ -209,7 +229,7 @@ form.addEventListener('submit', async event => {
   const name = String(formData.get('name')).trim();
   const amount = Number(formData.get('amount'));
   const type = String(formData.get('type'));
-  const category = String(formData.get('category'));
+  const category = type === 'income' ? 'Income' : String(formData.get('category'));
   const date = String(formData.get('date'));
   const error = document.querySelector('#form-error');
   if (!name || !Number.isFinite(amount) || amount <= 0 || !date) {
@@ -230,8 +250,8 @@ form.addEventListener('submit', async event => {
 
 searchInput.addEventListener('input', renderTransactions);
 filterButton.addEventListener('click', () => {
-  const filters = ['all', 'expense', 'income'];
-  const labels = ['All types', 'Expenses only', 'Income only'];
+  const filters = ['all', 'expense', 'income', 'savings'];
+  const labels = ['All types', 'Expenses only', 'Income only', 'Savings only'];
   const nextIndex = (filters.indexOf(currentFilter) + 1) % filters.length;
   currentFilter = filters[nextIndex];
   filterButton.innerHTML = `${labels[nextIndex]} <span>⌄</span>`;
