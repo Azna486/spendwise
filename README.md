@@ -1,4 +1,4 @@
-# SpendWise — Milestone 8
+# SpendWise — Milestone 9
 
 A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript, and a Python (Flask) backend with a SQLite database.
 
@@ -12,6 +12,8 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - **Transactions table** — search, filter by type (all / expenses / income / savings), and "View all".
 - **Add transactions** — form with name, amount, type, category, and date, with validation. Pick the type first; the category list changes with it.
 - **Savings pots** — running totals for Emergency fund, Stocks, and Savings that update as soon as you add a savings transaction.
+- **Real pages** — Overview, Savings, Wishlist, Analytics, and Transactions each have their own page (the browser Back button works too).
+- **Interactive dashboard** — clickable summary cards and chart slices, animated numbers, a month-by-month chart, top-category bars, confetti when you reach a goal, and keyboard shortcuts (N = new transaction, 1–5 = switch pages).
 - **Light / dark mode** — royal blue, white, and tomato red theme with a switch in the top bar. Your choice is remembered.
 - **Wishlist goals** — add something you want to buy and its cost, put money towards it, and watch a progress bar fill up with a motivating quote at each stage. Goal money counts as savings.
 - **Stock purchases** — for Savings → Stocks, record the stock name and number of shares. The table shows e.g. "10 shares of TCS · ₹250/share".
@@ -75,6 +77,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - [x] **Milestone 6** — Savings pots panel showing your Emergency fund, Stocks, and Savings totals.
 - [x] **Milestone 7** — Wishlist goals with progress bars, "Add money", and fun quotes.
 - [x] **Milestone 8** — New royal blue + tomato red theme with a light/dark mode switch. All colours live in the THEME section at the top of `styles.css`.
+- [x] **Milestone 9** — Sidebar opens real pages instead of scrolling; interactive cards, charts, analytics page, confetti, and shortcuts.
 - [x] **Sidebar navigation** — Savings and Wishlist links; the current section is highlighted as you scroll.
 
 

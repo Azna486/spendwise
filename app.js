@@ -52,8 +52,8 @@ const filterButton = document.querySelector('#filter-button');
 const toast = document.querySelector('#toast');
 
 let currentFilter = 'all';
-let showAll = false;
 let spendingChart = null;
+let trendChart = null; // declared early: the theme switch may redraw it
 let toastTimeout;
 
 function getTotals() {
@@ -65,15 +65,32 @@ function getTotals() {
   return { income, expenses, savings, balance, savingsRate };
 }
 
+// Numbers roll up/down to their new value instead of just jumping.
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function countUp(element, value) {
+  const from = Number(element.dataset.value || 0);
+  element.dataset.value = value;
+  const run = (element.dataset.run = Number(element.dataset.run || 0) + 1);
+  if (from === value || reduceMotion()) { element.textContent = money(value); return; }
+  const start = performance.now();
+  const step = now => {
+    if (Number(element.dataset.run) !== run) return; // a newer animation took over
+    const t = Math.min(1, (now - start) / 750);
+    element.textContent = money(from + (value - from) * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 function renderSummary() {
   const totals = getTotals();
-  incomeValue.textContent = money(totals.income);
-  expenseValue.textContent = money(totals.expenses);
-  balanceValue.textContent = money(totals.balance);
-  savingsValue.textContent = money(totals.savings);
+  countUp(incomeValue, totals.income);
+  countUp(expenseValue, totals.expenses);
+  countUp(balanceValue, totals.balance);
+  countUp(savingsValue, totals.savings);
   document.querySelector('#savings-caption').textContent = `${totals.savingsRate}% of income set aside`;
   savingsFill.style.width = `${Math.max(0, Math.min(100, totals.savingsRate))}%`;
-  donutTotal.textContent = money(totals.expenses);
+  countUp(donutTotal, totals.expenses);
   document.querySelector('#balance-caption').textContent = totals.balance >= 0
     ? 'Income minus expenses and savings' : 'Expenses and savings are higher than income';
 }
@@ -108,17 +125,19 @@ function renderChart() {
       responsive: true,
       maintainAspectRatio: false,
       cutout: '76%',
+      onClick: (event, elements) => { if (elements.length) exploreCategory(categories[elements[0].index][0]); },
+      onHover: (event, elements) => { event.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
       plugins: { legend: { display: false }, tooltip: {
         callbacks: { label: context => ` ${context.label}: ${money(context.raw)}` }
       } }
     }
   });
   categoryLegend.innerHTML = categories.slice(0, 5).map(([category, amount]) => `
-    <div class="legend-item">
+    <button type="button" class="legend-item" data-category="${escapeHTML(category)}" title="See ${escapeHTML(category)} transactions">
       <span class="legend-dot" style="background:${categoryColors[category] || categoryColors.Other}"></span>
       <span class="legend-name">${escapeHTML(category)}</span>
       <span class="legend-amount">${money(amount)}</span>
-    </div>`).join('');
+    </button>`).join('');
 }
 
 function getInsights() {
@@ -158,14 +177,17 @@ function stockDetail(item) {
 }
 
 function renderTransactions() {
-  const searchTerm = searchInput.value.trim().toLowerCase();
+  // Overview: latest 5 of everything. Savings: only savings. Transactions: everything, with search + filter.
+  const searchTerm = currentPage === 'transactions' ? searchInput.value.trim().toLowerCase() : '';
+  const typeFilter = { overview: 'all', savings: 'savings' }[currentPage] || currentFilter;
   const filtered = transactions
-    .filter(item => currentFilter === 'all' || item.type === currentFilter)
+    .filter(item => typeFilter === 'all' || item.type === typeFilter)
     .filter(item => `${item.name} ${item.category} ${item.date}`.toLowerCase().includes(searchTerm))
     .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-  const visible = showAll ? filtered : filtered.slice(0, 6);
+  const visible = currentPage === 'overview' ? filtered.slice(0, 5) : filtered;
   if (!visible.length) {
-    transactionBody.innerHTML = '<tr><td colspan="5" class="empty-state">No transactions match your search.</td></tr>';
+    const message = searchTerm || typeFilter !== 'all' ? 'No transactions match.' : 'Nothing here yet — add your first transaction!';
+    transactionBody.innerHTML = `<tr><td colspan="5" class="empty-state">${message}</td></tr>`;
   } else {
     transactionBody.innerHTML = visible.map(item => {
       const iconClass = item.type === 'expense' ? item.category.toLowerCase() : item.type;
@@ -181,7 +203,7 @@ function renderTransactions() {
     }).join('');
   }
   transactionCount.textContent = `Showing ${visible.length} of ${filtered.length} transaction${filtered.length === 1 ? '' : 's'}`;
-  document.querySelector('#show-all-button').classList.toggle('hidden', filtered.length <= 6 || showAll);
+  document.querySelector('#show-all-button').classList.toggle('hidden', currentPage !== 'overview' || filtered.length <= visible.length);
   document.querySelector('#show-all-button').textContent = 'View all transactions →';
 }
 
@@ -211,6 +233,7 @@ function renderApp() {
   renderChart();
   renderInsights();
   renderTransactions();
+  if (currentPage === 'analytics') { renderTrend(); renderCategoryBars(); }
 }
 
 function escapeHTML(value) {
@@ -307,18 +330,11 @@ form.addEventListener('submit', async event => {
 
 searchInput.addEventListener('input', renderTransactions);
 filterButton.addEventListener('click', () => {
-  const filters = ['all', 'expense', 'income', 'savings'];
-  const labels = ['All types', 'Expenses only', 'Income only', 'Savings only'];
-  const nextIndex = (filters.indexOf(currentFilter) + 1) % filters.length;
-  currentFilter = filters[nextIndex];
-  filterButton.innerHTML = `${labels[nextIndex]} <span>⌄</span>`;
-  showAll = false;
+  const order = ['all', 'expense', 'income', 'savings'];
+  setFilter(order[(order.indexOf(currentFilter) + 1) % order.length]);
   renderTransactions();
 });
-document.querySelector('#show-all-button').addEventListener('click', () => {
-  showAll = true;
-  renderTransactions();
-});
+document.querySelector('#show-all-button').addEventListener('click', () => goTo('transactions'));
 transactionBody.addEventListener('click', async event => {
   const button = event.target.closest('[data-delete-id]');
   if (!button) return;
@@ -357,6 +373,11 @@ function goalQuote(goal, percent) {
 
 function renderGoals() {
   const grid = document.querySelector('#goal-grid');
+  const totalSaved = goals.reduce((total, goal) => total + Math.min(goalSaved(goal), goal.target), 0);
+  const totalTarget = goals.reduce((total, goal) => total + goal.target, 0);
+  document.querySelector('#goals-summary').textContent = goals.length
+    ? `${goals.length} goal${goals.length === 1 ? '' : 's'} · ${money(totalSaved)} saved of ${money(totalTarget)}`
+    : "Things you're saving up to buy";
   if (!goals.length) {
     grid.innerHTML = `<p class="goal-empty">No goals yet. What are you dreaming of buying? ✨</p>`;
     return;
@@ -431,6 +452,7 @@ goalGrid.addEventListener('submit', async event => {
   transactions.push(await res.json());
   renderApp();
   const left = goal.target - goalSaved(goal);
+  if (left <= 0) launchConfetti();
   showToast(left <= 0
     ? `🎉 You reached your goal for ${goal.name}!`
     : `${money(amount)} added to ${goal.name}. Only ${money(left)} to go!`);
@@ -456,27 +478,186 @@ function applyTheme(theme) {
   themeToggle.querySelector('.theme-toggle-knob').textContent = theme === 'dark' ? '🌙' : '☀️';
   themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
   try { localStorage.setItem('spendwise-theme', theme); } catch (e) {}
-  if (spendingChart) renderChart(); // redraw so the chart's borders match the new card colour
+  if (spendingChart) renderChart(); // redraw so the chart colours match the new theme
+  if (trendChart) renderTrend();
 }
 themeToggle.addEventListener('click', () => {
   applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 });
 applyTheme(document.documentElement.dataset.theme || 'light');
 
-// ---------- Sidebar ----------
-// Highlight the sidebar link for whichever section you're looking at.
-const navLinks = [...document.querySelectorAll('.nav-link[href^="#"]')];
-function setActiveNav(id) {
-  navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${id}`));
+// ---------- Analytics page ----------
+
+function getMonthlyTotals() {
+  const months = {};
+  transactions.forEach(item => {
+    const key = item.date.slice(0, 7); // "2026-11"
+    months[key] = months[key] || { income: 0, expense: 0, savings: 0 };
+    months[key][item.type] += item.amount;
+  });
+  return Object.keys(months).sort().slice(-6).map(key => [key, months[key]]); // last 6 months
 }
-const sectionObserver = new IntersectionObserver(entries => {
-  entries.forEach(entry => { if (entry.isIntersecting) setActiveNav(entry.target.id); });
-}, { rootMargin: '-35% 0px -60% 0px' }); // "in view" = crossing a line ~35% down the screen
-navLinks
-  .map(link => document.querySelector(link.getAttribute('href')))
-  .filter(Boolean)
-  .forEach(section => sectionObserver.observe(section));
-navLinks.forEach(link => link.addEventListener('click', () => setActiveNav(link.getAttribute('href').slice(1))));
+
+function renderTrend() {
+  if (trendChart) trendChart.destroy();
+  const months = getMonthlyTotals();
+  const monthLabel = key => new Date(`${key}-01T12:00:00`).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+  const series = [['Income', 'income', '--success'], ['Expenses', 'expense', '--accent'], ['Savings', 'savings', '--primary']];
+  trendChart = new Chart(document.querySelector('#trend-chart'), {
+    type: 'bar',
+    data: {
+      labels: months.map(([key]) => monthLabel(key)),
+      datasets: series.map(([label, key, colour]) => ({
+        label, data: months.map(([, totals]) => totals[key]),
+        backgroundColor: cssVar(colour), borderRadius: 6, maxBarThickness: 30
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: cssVar('--muted'), usePointStyle: true, boxWidth: 8, font: { family: 'DM Sans' } } },
+        tooltip: { callbacks: { label: context => ` ${context.dataset.label}: ${money(context.raw)}` } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: cssVar('--muted') } },
+        y: { grid: { color: cssVar('--line') }, border: { display: false }, ticks: { color: cssVar('--muted'), callback: value => money(value) } }
+      }
+    }
+  });
+}
+
+function renderCategoryBars() {
+  const box = document.querySelector('#category-bars');
+  const categories = getExpenseCategories();
+  if (!categories.length) { box.innerHTML = '<p class="goal-empty">No expenses yet.</p>'; return; }
+  const biggest = categories[0][1];
+  box.innerHTML = categories.map(([category, amount]) => `
+    <button type="button" class="category-bar" data-category="${escapeHTML(category)}">
+      <span class="category-bar-top"><span>${categoryIcons[category] || '•'} ${escapeHTML(category)}</span><span>${money(amount)}</span></span>
+      <span class="category-bar-track"><span style="background:${categoryColors[category] || categoryColors.Other}" data-width="${(amount / biggest * 100).toFixed(1)}"></span></span>
+    </button>`).join('');
+  // grow the bars after they're on screen, so they animate
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    box.querySelectorAll('[data-width]').forEach(bar => { bar.style.width = `${bar.dataset.width}%`; });
+  }));
+}
+
+// Clicking a category anywhere jumps to Transactions, searched for that category.
+const filterLabels = { all: 'All types', expense: 'Expenses only', income: 'Income only', savings: 'Savings only' };
+function setFilter(type) {
+  currentFilter = type;
+  filterButton.innerHTML = `${filterLabels[type]} <span>⌄</span>`;
+}
+function exploreCategory(category) {
+  setFilter('all');
+  searchInput.value = category;
+  goTo('transactions');
+}
+document.addEventListener('click', event => {
+  const target = event.target.closest('.legend-item[data-category], .category-bar[data-category]');
+  if (target) exploreCategory(target.dataset.category);
+});
+
+// ---------- Confetti ----------
+function launchConfetti() {
+  if (reduceMotion()) return;
+  const colours = [cssVar('--accent'), cssVar('--primary'), '#FFFFFF', '#F5A524', '#17A974'];
+  for (let i = 0; i < 90; i++) {
+    const piece = document.createElement('span');
+    piece.className = 'confetti-piece';
+    piece.style.setProperty('--x', `${Math.random() * 100}vw`);
+    piece.style.setProperty('--dx', `${(Math.random() - 0.5) * 240}px`);
+    piece.style.setProperty('--rot', `${Math.random() * 720 - 360}deg`);
+    piece.style.setProperty('--dur', `${1.6 + Math.random() * 1.4}s`);
+    piece.style.animationDelay = `${Math.random() * 0.3}s`;
+    piece.style.background = colours[i % colours.length];
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 3600);
+  }
+}
+
+// ---------- Pages ----------
+// Each sidebar link is its own page. Sections say which pages they belong to with data-views="...".
+const pages = {
+  overview: { name: 'Overview', title: 'Your money, at a glance', subtitle: "Here's what's happening with your finances." },
+  savings: { name: 'Savings', title: 'Your savings', subtitle: "Every rupee you've put aside, and where it lives." },
+  wishlist: { name: 'Wishlist', title: 'Your wishlist', subtitle: 'Save up for the things you love, one step at a time.' },
+  analytics: { name: 'Analytics', title: 'Your spending, decoded', subtitle: 'See where your money goes and how it changes month to month.' },
+  transactions: { name: 'Transactions', title: 'Every transaction', subtitle: 'Search, filter and tidy up your money history.' }
+};
+const transactionPanelText = {
+  overview: ['Recent transactions', 'Your latest activity'],
+  savings: ['Savings history', 'Every deposit into your pots and goals'],
+  transactions: ['All transactions', 'Search by name, category or date']
+};
+let currentPage = 'overview';
+const pageFromHash = () => { const name = location.hash.replace('#/', ''); return pages[name] ? name : 'overview'; };
+
+function goTo(page) {
+  if (location.hash === `#/${page}`) showPage(page);
+  else location.hash = `#/${page}`; // changing the hash triggers showPage (and makes Back work)
+}
+
+function showPage(page) {
+  currentPage = page;
+  const info = pages[page];
+  document.querySelectorAll('[data-views]').forEach(section => {
+    section.classList.toggle('hidden', !section.dataset.views.split(' ').includes(page));
+  });
+  // replay the entrance animation, one section after another
+  document.querySelectorAll('.page-heading, [data-views]:not(.hidden)').forEach((section, index) => {
+    section.classList.remove('view-enter');
+    void section.offsetWidth;
+    section.style.setProperty('--i', index);
+    section.classList.add('view-enter');
+  });
+  document.querySelectorAll('.nav-link[data-page]').forEach(link => link.classList.toggle('active', link.dataset.page === page));
+  document.querySelector('#page-title').innerHTML = `${escapeHTML(info.title)}<span>.</span>`;
+  document.querySelector('#page-subtitle').textContent = info.subtitle;
+  document.querySelector('#breadcrumb-current').textContent = info.name;
+  document.title = `${info.name} · SpendWise`;
+  if (transactionPanelText[page]) {
+    document.querySelector('#tx-title').textContent = transactionPanelText[page][0];
+    document.querySelector('#tx-subtitle').textContent = transactionPanelText[page][1];
+    document.querySelector('.transaction-actions').classList.toggle('hidden', page !== 'transactions');
+    renderTransactions();
+  }
+  if (page === 'overview' || page === 'analytics') renderChart();
+  if (page === 'analytics') { renderTrend(); renderCategoryBars(); }
+  window.scrollTo({ top: 0 });
+}
+window.addEventListener('hashchange', () => showPage(pageFromHash()));
+
+document.querySelector('[data-soon]').addEventListener('click', event => {
+  event.preventDefault();
+  showToast('Budgets are coming soon. Stay tuned! 🚧');
+});
+
+// Summary cards are shortcuts: Income → income transactions, Saved → Savings page, etc.
+document.querySelectorAll('[data-go]').forEach(card => {
+  const open = () => {
+    if (card.dataset.filter) { setFilter(card.dataset.filter); searchInput.value = ''; }
+    goTo(card.dataset.go);
+  };
+  card.addEventListener('click', open);
+  card.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
+  });
+});
+
+// Keyboard shortcuts: N = new transaction, 1–5 = switch pages
+document.addEventListener('keydown', event => {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (event.target.closest('input, select, textarea') || !modal.classList.contains('hidden')) return;
+  if (event.key === 'n' || event.key === 'N') { event.preventDefault(); openModal(); return; }
+  const page = Object.keys(pages)[Number(event.key) - 1];
+  if (page) goTo(page);
+});
+
+document.querySelector('#page-date').textContent = new Date()
+  .toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+showPage(pageFromHash());
 
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
