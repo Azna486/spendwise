@@ -218,7 +218,7 @@ const potTotal = category => sum(transactions.filter(item => item.type === 'savi
 function renderSavingsPots() {
   document.querySelector('#pot-grid').innerHTML = savingsPots.map(pot => {
     const count = transactions.filter(item => item.type === 'savings' && item.category === pot.category).length;
-    return `<div class="pot ${pot.category === 'Emergency fund' ? 'emergency' : ''}">
+    return `<div class="pot tilt ${pot.category === 'Emergency fund' ? 'emergency' : ''}">
       <div class="pot-label"><span class="pot-icon">${categoryIcons[pot.category]}</span>${pot.category}</div>
       <div class="pot-value">${money(potTotal(pot.category))}</div>
       <div class="pot-note">${count ? `${count} deposit${count === 1 ? '' : 's'} · ${pot.note}` : 'Nothing added yet'}</div>
@@ -387,19 +387,48 @@ function renderGoals() {
     const exactPercent = saved / goal.target * 100;
     const percent = Math.min(100, Math.floor(exactPercent));
     const done = saved >= goal.target;
-    return `<article class="goal-card ${done ? 'done' : ''}">
-      <div class="goal-top">
-        <span class="goal-emoji">${escapeHTML(goal.emoji)}</span>
-        <div class="goal-title"><strong>${escapeHTML(goal.name)}</strong><span>${money(saved)} of ${money(goal.target)}</span></div>
-        <button type="button" class="goal-delete" data-delete-goal="${goal.id}" title="Delete goal" aria-label="Delete goal ${escapeHTML(goal.name)}">×</button>
+    // Back-of-card stats
+    const deposits = transactions.filter(item => item.goal_id === goal.id).sort((a, b) => a.date.localeCompare(b.date));
+    const average = deposits.length ? saved / deposits.length : 0;
+    const left = Math.max(0, goal.target - saved);
+    const depositsToGo = average > 0 ? Math.ceil(left / average) : 0;
+    const pace = done ? 'Fully funded. Enjoy it! 🎉'
+      : depositsToGo ? `About ${depositsToGo} more deposit${depositsToGo === 1 ? '' : 's'} like your average and it's yours!`
+      : 'Add your first deposit to see your pace.';
+    const stat = (label, value) => `<div class="goal-stat"><span>${label}</span><strong>${value}</strong></div>`;
+    return `<article class="goal-card tilt ${done ? 'done' : ''}">
+      <div class="goal-flip-inner">
+        <div class="goal-face goal-front">
+          <div class="goal-top">
+            <span class="goal-emoji">${escapeHTML(goal.emoji)}</span>
+            <div class="goal-title"><strong>${escapeHTML(goal.name)}</strong><span>${money(saved)} of ${money(goal.target)}</span></div>
+            <button type="button" class="goal-flip-button" data-flip title="Flip for stats" aria-label="Show stats for ${escapeHTML(goal.name)}">↻</button>
+            <button type="button" class="goal-delete" data-delete-goal="${goal.id}" title="Delete goal" aria-label="Delete goal ${escapeHTML(goal.name)}">×</button>
+          </div>
+          <div class="goal-track"><span style="width:${percent}%"></span></div>
+          <div class="goal-meta"><strong>${percent}%</strong><span>${done ? 'Ready to buy! 🛍️' : `${money(left)} to go`}</span></div>
+          <p class="goal-quote">“${goalQuote(goal, exactPercent)}”</p>
+          ${done ? '' : `<form class="goal-deposit" data-goal-id="${goal.id}">
+            <input name="amount" type="number" min="1" step="0.01" required placeholder="Add ₹" aria-label="Amount to add to ${escapeHTML(goal.name)}" />
+            <button type="submit">Add money</button>
+          </form>`}
+        </div>
+        <div class="goal-face goal-back" aria-hidden="true">
+          <div class="goal-top">
+            <span class="goal-emoji">${escapeHTML(goal.emoji)}</span>
+            <div class="goal-title"><strong>${escapeHTML(goal.name)} stats</strong><span>${percent}% there</span></div>
+          </div>
+          <div class="goal-stats">
+            ${stat('Deposits', deposits.length)}
+            ${stat('Started', deposits.length ? prettyDate(deposits[0].date) : '—')}
+            ${stat('Last added', deposits.length ? prettyDate(deposits[deposits.length - 1].date) : '—')}
+            ${stat('Biggest deposit', deposits.length ? money(Math.max(...deposits.map(item => item.amount))) : '—')}
+            ${stat('Average deposit', deposits.length ? money(average) : '—')}
+          </div>
+          <p class="goal-pace">${pace}</p>
+          <button type="button" class="goal-back-button" data-flip>← Back</button>
+        </div>
       </div>
-      <div class="goal-track"><span style="width:${percent}%"></span></div>
-      <div class="goal-meta"><strong>${percent}%</strong><span>${done ? 'Ready to buy! 🛍️' : `${money(goal.target - saved)} to go`}</span></div>
-      <p class="goal-quote">“${goalQuote(goal, exactPercent)}”</p>
-      ${done ? '' : `<form class="goal-deposit" data-goal-id="${goal.id}">
-        <input name="amount" type="number" min="1" step="0.01" required placeholder="Add ₹" aria-label="Amount to add to ${escapeHTML(goal.name)}" />
-        <button type="submit">Add money</button>
-      </form>`}
     </article>`;
   }).join('');
 }
@@ -658,6 +687,45 @@ document.addEventListener('keydown', event => {
 document.querySelector('#page-date').textContent = new Date()
   .toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
 showPage(pageFromHash());
+
+// ---------- 3D tilt ----------
+// Cards with class "tilt" lean towards the mouse. Skipped on touch screens and with "reduce motion".
+const canTilt = () => matchMedia('(hover: hover) and (pointer: fine)').matches && !reduceMotion();
+let tiltTarget = null;
+function resetTilt(card) {
+  card.classList.remove('tilting');
+  ['--rx', '--ry', '--px', '--py'].forEach(name => card.style.removeProperty(name));
+}
+document.addEventListener('pointermove', event => {
+  let card = canTilt() ? event.target.closest('.tilt') : null;
+  if (card && card.contains(document.activeElement) && document.activeElement.matches('input, select')) card = null; // hold still while typing
+  if (tiltTarget && tiltTarget !== card) resetTilt(tiltTarget);
+  tiltTarget = card;
+  if (!card) return;
+  const box = card.getBoundingClientRect();
+  const x = ((event.clientX - box.left) / box.width) * 2 - 1;  // -1 = left edge, 1 = right edge
+  const y = ((event.clientY - box.top) / box.height) * 2 - 1;  // -1 = top edge, 1 = bottom edge
+  const strength = card.classList.contains('goal-card') ? 6 : 10;  // degrees
+  card.classList.add('tilting');
+  card.style.setProperty('--rx', `${(-y * strength).toFixed(2)}deg`);
+  card.style.setProperty('--ry', `${(x * strength).toFixed(2)}deg`);
+  card.style.setProperty('--px', x.toFixed(3));
+  card.style.setProperty('--py', y.toFixed(3));
+});
+document.documentElement.addEventListener('pointerleave', () => {
+  if (tiltTarget) resetTilt(tiltTarget);
+  tiltTarget = null;
+});
+
+// Flip goal cards to see their stats
+goalGrid.addEventListener('click', event => {
+  const button = event.target.closest('[data-flip]');
+  if (!button) return;
+  const card = button.closest('.goal-card');
+  const flipped = card.classList.toggle('flipped');
+  card.querySelector('.goal-front').setAttribute('aria-hidden', String(flipped));
+  card.querySelector('.goal-back').setAttribute('aria-hidden', String(!flipped));
+});
 
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
