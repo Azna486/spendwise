@@ -1,6 +1,5 @@
 // SpendWise — Milestone 1
-// The array below is temporary sample data. Later, we'll store transactions in a database.
-const transactions = [
+const sampleTransactions = [
   { id: 1, name: 'Monthly allowance', category: 'Salary', date: '2026-11-01', amount: 20000, type: 'income' },
   { id: 2, name: 'Freelance design work', category: 'Freelance', date: '2026-11-01', amount: 5000, type: 'income' },
   { id: 3, name: 'Groceries at Nature’s Basket', category: 'Food', date: '2026-11-01', amount: 1800, type: 'expense' },
@@ -16,7 +15,7 @@ const transactions = [
   { id: 13, name: 'Snacks', category: 'Food', date: '2026-10-08', amount: 900, type: 'expense' },
   { id: 14, name: 'Movie tickets', category: 'Other', date: '2026-10-04', amount: 900, type: 'expense' }
 ];
-
+let transactions = [];
 const categoryColors = {
   Food: '#E8A36D', Shopping: '#A49AE3', Transport: '#7BA9DF',
   Education: '#69B88A', Bills: '#D5BD70', Health: '#DF8E9B',
@@ -203,10 +202,8 @@ function showToast(message) {
 document.querySelector('#open-form-button').addEventListener('click', openModal);
 document.querySelector('#close-modal-button').addEventListener('click', closeModal);
 document.querySelector('#cancel-modal-button').addEventListener('click', closeModal);
-modal.addEventListener('click', event => { if (event.target === modal) closeModal(); });
 document.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
-
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
   const formData = new FormData(form);
   const name = String(formData.get('name')).trim();
@@ -219,7 +216,13 @@ form.addEventListener('submit', event => {
     error.textContent = 'Enter a name, a positive amount, and a date.';
     return;
   }
-  transactions.push({ id: Date.now(), name, amount, type, category, date });
+    const res = await fetch('/api/transactions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, amount, type, category, date })
+  });
+  if (!res.ok) { error.textContent = 'Could not save. Try again.'; return; }
+  transactions.push(await res.json());
   closeModal();
   renderApp();
   showToast('Transaction added successfully.');
@@ -239,12 +242,13 @@ document.querySelector('#show-all-button').addEventListener('click', () => {
   showAll = true;
   renderTransactions();
 });
-transactionBody.addEventListener('click', event => {
+transactionBody.addEventListener('click', async event => {
   const button = event.target.closest('[data-delete-id]');
   if (!button) return;
   const id = Number(button.dataset.deleteId);
   const index = transactions.findIndex(item => item.id === id);
   if (index < 0) return;
+  await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
   const [removed] = transactions.splice(index, 1);
   renderApp();
   showToast(`Removed “${removed.name}”.`);
@@ -254,4 +258,9 @@ document.querySelector('#period-button').addEventListener('click', () => {
 });
 
 // Draw the first view from the sample transaction array.
-renderApp();
+async function loadTransactions() {
+  const res = await fetch('/api/transactions');
+  transactions = await res.json();
+  renderApp();
+}
+loadTransactions();
