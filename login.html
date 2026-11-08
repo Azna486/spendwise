@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpendWise — Log in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #F4F6F3; font-family: 'DM Sans', sans-serif; color: #1E2A24; }
+    .card { width: min(380px, 92vw); background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 40px rgba(30, 42, 36, 0.08); }
+    .brand { font-family: Manrope, sans-serif; font-weight: 800; font-size: 22px; margin-bottom: 24px; }
+    .brand span { font-weight: 500; color: #29845E; }
+    h1 { font-family: Manrope, sans-serif; font-size: 24px; margin: 0 0 6px; }
+    .subtitle { margin: 0 0 24px; color: #6B7770; font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+    input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border: 1px solid #DDE3DF; border-radius: 12px; font: inherit; }
+    input:focus { outline: 2px solid #29845E; border-color: transparent; }
+    button { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #29845E; color: #fff; font: inherit; font-weight: 600; cursor: pointer; margin-top: 4px; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .error { min-height: 20px; color: #C2410C; font-size: 13px; margin: 0 0 8px; }
+    .hint { font-size: 12px; font-weight: 400; color: #6B7770; }
+    .switch { text-align: center; font-size: 14px; color: #6B7770; margin: 18px 0 0; }
+    .switch a { color: #29845E; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <form class="card" id="auth-form">
+    <div class="brand">spend<span>wise</span></div>
+    <h1 id="title">Welcome back</h1>
+    <p class="subtitle" id="subtitle">Log in to see your dashboard.</p>
+    <label>Username
+      <input name="username" autocomplete="username" required minlength="3" maxlength="30" />
+    </label>
+    <label>Password <span class="hint" id="password-hint" hidden>(at least 8 characters)</span>
+      <input name="password" type="password" autocomplete="current-password" required minlength="8" />
+    </label>
+    <p class="error" id="error" role="alert"></p>
+    <button type="submit" id="submit-button">Log in</button>
+    <p class="switch"><span id="switch-text">New here?</span> <a href="#" id="switch-link">Create an account</a></p>
+  </form>
+
+  <script>
+    let mode = 'login'; // or 'signup'
+    const form = document.querySelector('#auth-form');
+    const errorText = document.querySelector('#error');
+    const submitButton = document.querySelector('#submit-button');
+
+    document.querySelector('#switch-link').addEventListener('click', event => {
+      event.preventDefault();
+      mode = mode === 'login' ? 'signup' : 'login';
+      const isLogin = mode === 'login';
+      document.querySelector('#title').textContent = isLogin ? 'Welcome back' : 'Create your account';
+      document.querySelector('#subtitle').textContent = isLogin ? 'Log in to see your dashboard.' : 'Start tracking your money in seconds.';
+      submitButton.textContent = isLogin ? 'Log in' : 'Sign up';
+      document.querySelector('#switch-text').textContent = isLogin ? 'New here?' : 'Already have an account?';
+      event.target.textContent = isLogin ? 'Create an account' : 'Log in';
+      document.querySelector('#password-hint').hidden = isLogin;
+      form.elements.password.autocomplete = isLogin ? 'current-password' : 'new-password';
+      errorText.textContent = '';
+    });
+
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      errorText.textContent = '';
+      submitButton.disabled = true;
+      try {
+        const res = await fetch(`/api/${mode}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: form.elements.username.value, password: form.elements.password.value })
+        });
+        if (res.ok) { window.location.href = '/'; return; }
+        const data = await res.json().catch(() => ({}));
+        errorText.textContent = data.error || 'Something went wrong. Please try again.';
+      } catch {
+        errorText.textContent = 'Cannot reach the server. Is "python main.py" running?';
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

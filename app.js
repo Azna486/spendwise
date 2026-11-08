@@ -260,7 +260,15 @@ document.querySelector('#period-button').addEventListener('click', () => {
 // Draw the first view from the sample transaction array.
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
+  if (res.status === 401) { window.location.href = '/login'; return; } // not logged in
   transactions = await res.json();
   renderApp();
+  const me = await fetch('/api/me');
+  if (me.ok) document.querySelector('#username-label').textContent = (await me.json()).username;
 }
+
+document.querySelector('#logout-button').addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  window.location.href = '/login';
+});
 loadTransactions();
