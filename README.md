@@ -1,4 +1,4 @@
-# SpendWise — Milestone 4
+# SpendWise — Milestone 6
 
 A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript, and a Python (Flask) backend with a SQLite database.
 
@@ -10,7 +10,9 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - **Spending breakdown** — donut chart of expenses by category (Chart.js).
 - **Smart insights** — top spending category, average expense, and whether you're spending more than you earn.
 - **Transactions table** — search, filter by type (all / expenses / income / savings), and "View all".
-- **Add transactions** — form with name, amount, type, category, and date, with validation. The category list changes with the type.
+- **Add transactions** — form with name, amount, type, category, and date, with validation. Pick the type first; the category list changes with it.
+- **Savings pots** — running totals for Emergency fund, Stocks, and Savings that update as soon as you add a savings transaction.
+- **Stock purchases** — for Savings → Stocks, record the stock name and number of shares. The table shows e.g. "10 shares of TCS · ₹250/share".
 - **Delete transactions** — via the "···" button on each row.
 - **Saved data** — transactions are stored in a database, so they stay after refreshing the page.
 
@@ -67,5 +69,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - [x] **Milestone 2** — Python Flask backend + SQLite database, so data survives a refresh.
 - [x] **Milestone 3** — User accounts with sign-up, login, and logout.
 - [x] **Milestone 4** — Savings type (Savings / Stocks / Emergency fund), income without a category, and balance that subtracts savings.
+- [x] **Milestone 5** — Type-first transaction form and stock details (stock name + number of shares).
+- [x] **Milestone 6** — Savings pots panel showing your Emergency fund, Stocks, and Savings totals.
 
 

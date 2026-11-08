@@ -148,6 +148,13 @@ function renderInsights() {
     </div>`).join('');
 }
 
+// e.g. "10 shares of TCS · ₹250/share"
+function stockDetail(item) {
+  if (!item.stock_name || !item.quantity) return '';
+  const shares = `${item.quantity} share${item.quantity === 1 ? '' : 's'}`;
+  return `<small class="stock-detail">${shares} of ${escapeHTML(item.stock_name)} · ${money(item.amount / item.quantity)}/share</small>`;
+}
+
 function renderTransactions() {
   const searchTerm = searchInput.value.trim().toLowerCase();
   const filtered = transactions
@@ -163,7 +170,7 @@ function renderTransactions() {
       const sign = { income: '+', expense: '−', savings: '' }[item.type];
       const amountClass = { income: '', expense: 'negative', savings: 'saved' }[item.type];
       return `<tr>
-        <td><div class="transaction-name"><span class="transaction-icon ${iconClass}">${categoryIcons[item.category] || '•'}</span>${escapeHTML(item.name)}</div></td>
+        <td><div class="transaction-name"><span class="transaction-icon ${iconClass}">${categoryIcons[item.category] || '•'}</span><div>${escapeHTML(item.name)}${stockDetail(item)}</div></div></td>
         <td><span class="category-pill">${escapeHTML(item.category)}</span></td>
         <td>${prettyDate(item.date)}</td>
         <td class="amount ${amountClass}">${sign}${money(item.amount)}</td>
@@ -176,8 +183,28 @@ function renderTransactions() {
   document.querySelector('#show-all-button').textContent = 'View all transactions →';
 }
 
+// Savings pots: running totals for each kind of savings (Emergency fund first).
+const savingsPots = [
+  { category: 'Emergency fund', note: 'your safety net for surprises' },
+  { category: 'Stocks', note: 'invested in shares' },
+  { category: 'Savings', note: 'general savings' }
+];
+const potTotal = category => sum(transactions.filter(item => item.type === 'savings' && item.category === category));
+
+function renderSavingsPots() {
+  document.querySelector('#pot-grid').innerHTML = savingsPots.map(pot => {
+    const count = transactions.filter(item => item.type === 'savings' && item.category === pot.category).length;
+    return `<div class="pot ${pot.category === 'Emergency fund' ? 'emergency' : ''}">
+      <div class="pot-label"><span class="pot-icon">${categoryIcons[pot.category]}</span>${pot.category}</div>
+      <div class="pot-value">${money(potTotal(pot.category))}</div>
+      <div class="pot-note">${count ? `${count} deposit${count === 1 ? '' : 's'} · ${pot.note}` : 'Nothing added yet'}</div>
+    </div>`;
+  }).join('');
+}
+
 function renderApp() {
   renderSummary();
+  renderSavingsPots();
   renderChart();
   renderInsights();
   renderTransactions();
@@ -202,14 +229,25 @@ function updateCategoryField() {
   form.elements.category.innerHTML = categoriesByType[type]
     .map(category => `<option>${category}</option>`).join('');
 }
-form.elements.type.addEventListener('change', updateCategoryField);
+
+// Stock name + number of shares only appear for Savings → Stocks.
+const stockFields = document.querySelector('#stock-fields');
+const isStock = () => form.elements.type.value === 'savings' && form.elements.category.value === 'Stocks';
+function updateStockFields() {
+  stockFields.classList.toggle('hidden', !isStock());
+  form.elements.name.placeholder = isStock() ? 'e.g. Bought TCS shares' : 'e.g. Coffee with friends';
+}
+
+form.elements.type.addEventListener('change', () => { updateCategoryField(); updateStockFields(); });
+form.elements.category.addEventListener('change', updateStockFields);
 function openModal() {
   form.reset();
   updateCategoryField();
+  updateStockFields();
   form.elements.date.value = new Date().toISOString().slice(0, 10);
   document.querySelector('#form-error').textContent = '';
   modal.classList.remove('hidden');
-  form.elements.name.focus();
+  form.elements.type.focus();
 }
 function closeModal() { modal.classList.add('hidden'); }
 function showToast(message) {
@@ -236,16 +274,28 @@ form.addEventListener('submit', async event => {
     error.textContent = 'Enter a name, a positive amount, and a date.';
     return;
   }
-    const res = await fetch('/api/transactions', {
+  const details = { name, amount, type, category, date };
+  if (isStock()) {
+    details.stock_name = String(formData.get('stock_name')).trim();
+    details.quantity = Number(formData.get('quantity'));
+    if (!details.stock_name || !(details.quantity > 0)) {
+      error.textContent = 'Enter the stock name and how many shares you bought.';
+      return;
+    }
+  }
+  const res = await fetch('/api/transactions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, amount, type, category, date })
+    body: JSON.stringify(details)
   });
   if (!res.ok) { error.textContent = 'Could not save. Try again.'; return; }
-  transactions.push(await res.json());
+  const saved = await res.json();
+  transactions.push(saved);
   closeModal();
   renderApp();
-  showToast('Transaction added successfully.');
+  showToast(saved.type === 'savings'
+    ? `Added! Your ${saved.category.toLowerCase()} is now ${money(potTotal(saved.category))}.`
+    : 'Transaction added successfully.');
 });
 
 searchInput.addEventListener('input', renderTransactions);

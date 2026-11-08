@@ -28,7 +28,9 @@ TRANSACTIONS_TABLE = '''CREATE TABLE IF NOT EXISTS transactions (
     date TEXT NOT NULL,
     amount REAL NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('income', 'expense', 'savings')),
-    user_id INTEGER REFERENCES users(id)
+    user_id INTEGER REFERENCES users(id),
+    stock_name TEXT,
+    quantity REAL
 )'''
 
 
@@ -53,6 +55,11 @@ def init_db():
             conn.execute('INSERT INTO transactions (id, name, category, date, amount, type, user_id) '
                          'SELECT id, name, category, date, amount, type, user_id FROM transactions_old')
             conn.execute('DROP TABLE transactions_old')
+        # Stock details (only filled in for Savings → Stocks).
+        columns = [row['name'] for row in conn.execute('PRAGMA table_info(transactions)')]
+        for column, kind in (('stock_name', 'TEXT'), ('quantity', 'REAL')):
+            if column not in columns:
+                conn.execute(f'ALTER TABLE transactions ADD COLUMN {column} {kind}')
 
 
 def login_required(view):
@@ -142,7 +149,7 @@ def me():
 def list_transactions():
     with db() as conn:
         rows = conn.execute(
-            'SELECT id, name, category, date, amount, type FROM transactions '
+            'SELECT id, name, category, date, amount, type, stock_name, quantity FROM transactions '
             'WHERE user_id = ? ORDER BY date DESC',
             (session['user_id'],)).fetchall()
     return jsonify([dict(r) for r in rows])
@@ -164,12 +171,22 @@ def add_transaction():
         return jsonify({'error': 'Invalid transaction'}), 400
     if tx_type == 'income':
         category = 'Income'   # income has no category
+    stock_name, quantity = None, None
+    if tx_type == 'savings' and category == 'Stocks':
+        stock_name = str(data.get('stock_name', '')).strip()[:40]
+        try:
+            quantity = float(data.get('quantity', 0))
+        except (TypeError, ValueError):
+            quantity = 0
+        if not stock_name or quantity <= 0:
+            return jsonify({'error': 'Enter the stock name and number of shares'}), 400
     with db() as conn:
         cur = conn.execute(
-            'INSERT INTO transactions (name, category, date, amount, type, user_id) VALUES (?, ?, ?, ?, ?, ?)',
-            (name, category, date, amount, tx_type, session['user_id']))
-    return jsonify({'id': cur.lastrowid, 'name': name, 'category': category,
-                    'date': date, 'amount': amount, 'type': tx_type}), 201
+            'INSERT INTO transactions (name, category, date, amount, type, user_id, stock_name, quantity) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (name, category, date, amount, tx_type, session['user_id'], stock_name, quantity))
+    return jsonify({'id': cur.lastrowid, 'name': name, 'category': category, 'date': date,
+                    'amount': amount, 'type': tx_type, 'stock_name': stock_name, 'quantity': quantity}), 201
 
 
 @app.delete('/api/transactions/<int:tx_id>')
