@@ -1,4 +1,4 @@
-# SpendWise — Milestone 6
+# SpendWise — Milestone 7
 
 A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript, and a Python (Flask) backend with a SQLite database.
 
@@ -12,6 +12,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - **Transactions table** — search, filter by type (all / expenses / income / savings), and "View all".
 - **Add transactions** — form with name, amount, type, category, and date, with validation. Pick the type first; the category list changes with it.
 - **Savings pots** — running totals for Emergency fund, Stocks, and Savings that update as soon as you add a savings transaction.
+- **Wishlist goals** — add something you want to buy and its cost, put money towards it, and watch a progress bar fill up with a motivating quote at each stage. Goal money counts as savings.
 - **Stock purchases** — for Savings → Stocks, record the stock name and number of shares. The table shows e.g. "10 shares of TCS · ₹250/share".
 - **Delete transactions** — via the "···" button on each row.
 - **Saved data** — transactions are stored in a database, so they stay after refreshing the page.
@@ -71,5 +72,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - [x] **Milestone 4** — Savings type (Savings / Stocks / Emergency fund), income without a category, and balance that subtracts savings.
 - [x] **Milestone 5** — Type-first transaction form and stock details (stock name + number of shares).
 - [x] **Milestone 6** — Savings pots panel showing your Emergency fund, Stocks, and Savings totals.
+- [x] **Milestone 7** — Wishlist goals with progress bars, "Add money", and fun quotes.
+- [x] **Sidebar navigation** — Savings and Wishlist links; the current section is highlighted as you scroll.
 
 

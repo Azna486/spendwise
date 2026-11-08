@@ -20,12 +20,12 @@ const categoryColors = {
   Food: '#E8A36D', Shopping: '#A49AE3', Transport: '#7BA9DF',
   Education: '#69B88A', Bills: '#D5BD70', Health: '#DF8E9B',
   Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE',
-  Savings: '#8E8FD8', Stocks: '#6B71BD', 'Emergency fund': '#B3A9E6'
+  Savings: '#8E8FD8', Stocks: '#6B71BD', 'Emergency fund': '#B3A9E6', Goals: '#C9A3E8'
 };
 const categoryIcons = {
   Food: '♨', Shopping: '◇', Transport: '↗', Education: '▤', Bills: '▣',
   Health: '+', Salary: '↓', Freelance: '✳', Other: '•••',
-  Income: '↓', Savings: '◈', Stocks: '↟', 'Emergency fund': '⛑'
+  Income: '↓', Savings: '◈', Stocks: '↟', 'Emergency fund': '⛑', Goals: '★'
 };
 const money = amount => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 0
@@ -205,6 +205,7 @@ function renderSavingsPots() {
 function renderApp() {
   renderSummary();
   renderSavingsPots();
+  renderGoals();
   renderChart();
   renderInsights();
   renderTransactions();
@@ -233,9 +234,13 @@ function updateCategoryField() {
 // Stock name + number of shares only appear for Savings → Stocks.
 const stockFields = document.querySelector('#stock-fields');
 const isStock = () => form.elements.type.value === 'savings' && form.elements.category.value === 'Stocks';
+const isEmergency = () => form.elements.type.value === 'savings' && form.elements.category.value === 'Emergency fund';
 function updateStockFields() {
   stockFields.classList.toggle('hidden', !isStock());
   form.elements.name.placeholder = isStock() ? 'e.g. Bought TCS shares' : 'e.g. Coffee with friends';
+  // Emergency fund deposits don't need a name: hide the box and fill it in automatically on save.
+  document.querySelector('#name-field').classList.toggle('hidden', isEmergency());
+  form.elements.name.required = !isEmergency();
 }
 
 form.elements.type.addEventListener('change', () => { updateCategoryField(); updateStockFields(); });
@@ -264,7 +269,7 @@ document.addEventListener('keydown', event => { if (event.key === 'Escape') clos
 form.addEventListener('submit', async event => {
   event.preventDefault();
   const formData = new FormData(form);
-  const name = String(formData.get('name')).trim();
+  const name = isEmergency() ? 'Emergency fund deposit' : String(formData.get('name')).trim();
   const amount = Number(formData.get('amount'));
   const type = String(formData.get('type'));
   const category = type === 'income' ? 'Income' : String(formData.get('category'));
@@ -328,10 +333,141 @@ document.querySelector('#period-button').addEventListener('click', () => {
 });
 
 // Draw the first view from the sample transaction array.
+// ---------- Wishlist goals ----------
+// Money put towards a goal is saved as a Savings → Goals transaction with a goal_id,
+// so a goal's progress is simply the sum of its linked transactions.
+let goals = [];
+const todayISO = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in your own time zone
+const goalSaved = goal => sum(transactions.filter(item => item.goal_id === goal.id));
+
+const goalQuotes = [
+  { upTo: 0, lines: ['Every big buy starts with a tiny first step. Add your first rupee!', 'The best time to start saving was yesterday. The next best is right now.'] },
+  { upTo: 25, lines: ["You've started — and that's the hardest part!", 'Small steps, big dreams. Keep stacking!'] },
+  { upTo: 50, lines: ['Momentum is building. Future you says thank you!', "You're on a roll — don't stop now."] },
+  { upTo: 75, lines: ["Halfway there! It's starting to feel real.", 'More than half done. You can almost see it!'] },
+  { upTo: 99.99, lines: ['So close you can almost unbox it!', 'The finish line is right there — one more push!'] },
+  { upTo: Infinity, lines: ['Goal reached! 🎉 Treat yourself — you earned it.', 'You did it! 🏆 Patience pays off.'] }
+];
+function goalQuote(goal, percent) {
+  const bucket = goalQuotes.find(quote => percent <= quote.upTo);
+  return bucket.lines[goal.id % bucket.lines.length];
+}
+
+function renderGoals() {
+  const grid = document.querySelector('#goal-grid');
+  if (!goals.length) {
+    grid.innerHTML = `<p class="goal-empty">No goals yet. What are you dreaming of buying? ✨</p>`;
+    return;
+  }
+  grid.innerHTML = goals.map(goal => {
+    const saved = goalSaved(goal);
+    const exactPercent = saved / goal.target * 100;
+    const percent = Math.min(100, Math.floor(exactPercent));
+    const done = saved >= goal.target;
+    return `<article class="goal-card ${done ? 'done' : ''}">
+      <div class="goal-top">
+        <span class="goal-emoji">${escapeHTML(goal.emoji)}</span>
+        <div class="goal-title"><strong>${escapeHTML(goal.name)}</strong><span>${money(saved)} of ${money(goal.target)}</span></div>
+        <button type="button" class="goal-delete" data-delete-goal="${goal.id}" title="Delete goal" aria-label="Delete goal ${escapeHTML(goal.name)}">×</button>
+      </div>
+      <div class="goal-track"><span style="width:${percent}%"></span></div>
+      <div class="goal-meta"><strong>${percent}%</strong><span>${done ? 'Ready to buy! 🛍️' : `${money(goal.target - saved)} to go`}</span></div>
+      <p class="goal-quote">“${goalQuote(goal, exactPercent)}”</p>
+      ${done ? '' : `<form class="goal-deposit" data-goal-id="${goal.id}">
+        <input name="amount" type="number" min="1" step="0.01" required placeholder="Add ₹" aria-label="Amount to add to ${escapeHTML(goal.name)}" />
+        <button type="submit">Add money</button>
+      </form>`}
+    </article>`;
+  }).join('');
+}
+
+const goalForm = document.querySelector('#goal-form');
+const goalGrid = document.querySelector('#goal-grid');
+
+document.querySelector('#new-goal-button').addEventListener('click', () => {
+  goalForm.classList.remove('hidden');
+  goalForm.elements.name.focus();
+});
+document.querySelector('#cancel-goal-button').addEventListener('click', () => {
+  goalForm.reset();
+  goalForm.classList.add('hidden');
+});
+
+goalForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const res = await fetch('/api/goals', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: goalForm.elements.name.value,
+      target: Number(goalForm.elements.target.value),
+      emoji: goalForm.elements.emoji.value
+    })
+  });
+  if (!res.ok) { showToast((await res.json().catch(() => ({}))).error || 'Could not add the goal.'); return; }
+  const goal = await res.json();
+  goals.push(goal);
+  goalForm.reset();
+  goalForm.classList.add('hidden');
+  renderGoals();
+  showToast(`New goal: ${goal.emoji} ${goal.name}. Let's make it happen!`);
+});
+
+// "Add money" on a goal card
+goalGrid.addEventListener('submit', async event => {
+  const depositForm = event.target.closest('.goal-deposit');
+  if (!depositForm) return;
+  event.preventDefault();
+  const goal = goals.find(item => item.id === Number(depositForm.dataset.goalId));
+  const amount = Number(depositForm.elements.amount.value);
+  const res = await fetch(`/api/goals/${goal.id}/deposit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount, date: todayISO() })
+  });
+  if (!res.ok) { showToast('Could not add money. Try again.'); return; }
+  transactions.push(await res.json());
+  renderApp();
+  const left = goal.target - goalSaved(goal);
+  showToast(left <= 0
+    ? `🎉 You reached your goal for ${goal.name}!`
+    : `${money(amount)} added to ${goal.name}. Only ${money(left)} to go!`);
+});
+
+// Delete a goal (the money stays in your savings)
+goalGrid.addEventListener('click', async event => {
+  const button = event.target.closest('[data-delete-goal]');
+  if (!button) return;
+  const goal = goals.find(item => item.id === Number(button.dataset.deleteGoal));
+  if (!confirm(`Delete the goal "${goal.name}"? Money you saved for it stays in your savings.`)) return;
+  await fetch(`/api/goals/${goal.id}`, { method: 'DELETE' });
+  goals = goals.filter(item => item !== goal);
+  transactions.forEach(item => { if (item.goal_id === goal.id) item.goal_id = null; });
+  renderApp();
+  showToast(`Goal "${goal.name}" removed.`);
+});
+
+// ---------- Sidebar ----------
+// Highlight the sidebar link for whichever section you're looking at.
+const navLinks = [...document.querySelectorAll('.nav-link[href^="#"]')];
+function setActiveNav(id) {
+  navLinks.forEach(link => link.classList.toggle('active', link.getAttribute('href') === `#${id}`));
+}
+const sectionObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => { if (entry.isIntersecting) setActiveNav(entry.target.id); });
+}, { rootMargin: '-35% 0px -60% 0px' }); // "in view" = crossing a line ~35% down the screen
+navLinks
+  .map(link => document.querySelector(link.getAttribute('href')))
+  .filter(Boolean)
+  .forEach(section => sectionObserver.observe(section));
+navLinks.forEach(link => link.addEventListener('click', () => setActiveNav(link.getAttribute('href').slice(1))));
+
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
   if (res.status === 401) { window.location.href = '/login'; return; } // not logged in
   transactions = await res.json();
+  const goalsRes = await fetch('/api/goals');
+  if (goalsRes.ok) goals = await goalsRes.json();
   renderApp();
   const me = await fetch('/api/me');
   if (me.ok) document.querySelector('#username-label').textContent = (await me.json()).username;

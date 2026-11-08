@@ -22,8 +22,10 @@
       <p class="nav-label">WORKSPACE</p>
       <nav class="nav-links" aria-label="Main navigation">
         <a class="nav-link active" href="#dashboard"><span class="nav-icon">▦</span> Overview</a>
-        <a class="nav-link" href="#transactions"><span class="nav-icon">↔</span> Transactions</a>
+        <a class="nav-link" href="#savings"><span class="nav-icon">◈</span> Savings</a>
+        <a class="nav-link" href="#goals"><span class="nav-icon">★</span> Wishlist</a>
         <a class="nav-link" href="#analytics"><span class="nav-icon">▥</span> Analytics</a>
+        <a class="nav-link" href="#transactions"><span class="nav-icon">↔</span> Transactions</a>
         <a class="nav-link" href="#budgets"><span class="nav-icon">◎</span> Budgets <span class="soon-tag">SOON</span></a>
       </nav>
       <div class="sidebar-bottom">
@@ -83,6 +85,18 @@
         <div class="pot-grid" id="pot-grid"></div>
       </section>
 
+      <section class="panel goals-panel" id="goals" aria-label="Wishlist goals">
+        <div class="panel-heading"><div><h2>Wishlist goals</h2><p>Things you're saving up to buy</p></div><button type="button" class="goal-new-button" id="new-goal-button">＋ New goal</button></div>
+        <form class="goal-form hidden" id="goal-form">
+          <select name="emoji" aria-label="Goal icon"><option>🎁</option><option>🎧</option><option>💻</option><option>📱</option><option>✈️</option><option>🎮</option><option>👟</option><option>🎸</option><option>📷</option><option>🚲</option><option>⌚</option><option>📚</option></select>
+          <input name="name" required maxlength="40" placeholder="What do you want to buy?" />
+          <input name="target" required type="number" min="1" step="0.01" placeholder="Cost (₹)" />
+          <button type="submit">Add goal</button>
+          <button type="button" class="goal-cancel-button" id="cancel-goal-button">Cancel</button>
+        </form>
+        <div class="goal-grid" id="goal-grid"></div>
+      </section>
+
       <section class="content-grid" id="analytics">
         <article class="panel spending-panel">
           <div class="panel-heading"><div><h2>Spending breakdown</h2><p>Where your money went this month</p></div><button class="select-button" id="period-button">This month <span>⌄</span></button></div>
@@ -109,7 +123,7 @@
       <div class="modal-heading"><div><p class="eyebrow">YOUR MONEY, YOUR WAY</p><h2 id="modal-title">Add a transaction</h2></div><button type="button" class="close-button" id="close-modal-button" aria-label="Close form">×</button></div>
       <div class="form-row"><label class="field-label">Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></label><label class="field-label" id="category-field">Category<select name="category"><option>Food</option><option>Shopping</option><option>Transport</option><option>Education</option><option>Bills</option><option>Health</option><option>Other</option></select></label></div>
       <div class="form-row hidden" id="stock-fields"><label class="field-label">Stock name<input name="stock_name" maxlength="40" placeholder="e.g. TCS" /></label><label class="field-label">Number of shares<input name="quantity" type="number" min="0" step="any" placeholder="10" /></label></div>
-      <label class="field-label">Transaction name<input name="name" required maxlength="60" placeholder="e.g. Coffee with friends" /></label>
+      <label class="field-label" id="name-field">Transaction name<input name="name" required maxlength="60" placeholder="e.g. Coffee with friends" /></label>
       <div class="form-row"><label class="field-label">Amount (₹)<input name="amount" required type="number" min="1" step="0.01" placeholder="250" /></label><label class="field-label">Date<input name="date" type="date" required /></label></div>
       <p class="form-error" id="form-error" role="alert"></p>
       <div class="modal-actions"><button type="button" class="secondary-button" id="cancel-modal-button">Cancel</button><button class="primary-button" type="submit">Save transaction <span>→</span></button></div>

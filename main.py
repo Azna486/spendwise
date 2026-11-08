@@ -30,7 +30,8 @@ TRANSACTIONS_TABLE = '''CREATE TABLE IF NOT EXISTS transactions (
     type TEXT NOT NULL CHECK (type IN ('income', 'expense', 'savings')),
     user_id INTEGER REFERENCES users(id),
     stock_name TEXT,
-    quantity REAL
+    quantity REAL,
+    goal_id INTEGER
 )'''
 
 
@@ -42,6 +43,13 @@ def init_db():
             password_hash TEXT NOT NULL
         )''')
         conn.execute(TRANSACTIONS_TABLE)
+        conn.execute('''CREATE TABLE IF NOT EXISTS goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            name TEXT NOT NULL,
+            target REAL NOT NULL,
+            emoji TEXT NOT NULL DEFAULT '🎁'
+        )''')
         # Older databases were made before users existed: add the user_id column if it's missing.
         columns = [row['name'] for row in conn.execute('PRAGMA table_info(transactions)')]
         if 'user_id' not in columns:
@@ -57,7 +65,7 @@ def init_db():
             conn.execute('DROP TABLE transactions_old')
         # Stock details (only filled in for Savings → Stocks).
         columns = [row['name'] for row in conn.execute('PRAGMA table_info(transactions)')]
-        for column, kind in (('stock_name', 'TEXT'), ('quantity', 'REAL')):
+        for column, kind in (('stock_name', 'TEXT'), ('quantity', 'REAL'), ('goal_id', 'INTEGER')):
             if column not in columns:
                 conn.execute(f'ALTER TABLE transactions ADD COLUMN {column} {kind}')
 
@@ -149,7 +157,7 @@ def me():
 def list_transactions():
     with db() as conn:
         rows = conn.execute(
-            'SELECT id, name, category, date, amount, type, stock_name, quantity FROM transactions '
+            'SELECT id, name, category, date, amount, type, stock_name, quantity, goal_id FROM transactions '
             'WHERE user_id = ? ORDER BY date DESC',
             (session['user_id'],)).fetchall()
     return jsonify([dict(r) for r in rows])
@@ -195,6 +203,76 @@ def delete_transaction(tx_id):
     with db() as conn:
         # "AND user_id = ?" stops one user deleting another user's transactions
         conn.execute('DELETE FROM transactions WHERE id = ? AND user_id = ?', (tx_id, session['user_id']))
+    return '', 204
+
+
+# ---------- Wishlist goals ----------
+# A goal is something you want to buy. Money put towards it is saved as a
+# Savings → Goals transaction linked by goal_id, so progress = sum of those transactions.
+
+GOAL_EMOJIS = {'🎁', '🎧', '💻', '📱', '✈️', '🎮', '👟', '🎸', '📷', '🚲', '⌚', '📚'}
+
+
+@app.get('/api/goals')
+@login_required
+def list_goals():
+    with db() as conn:
+        rows = conn.execute('SELECT id, name, target, emoji FROM goals WHERE user_id = ? ORDER BY id',
+                            (session['user_id'],)).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.post('/api/goals')
+@login_required
+def add_goal():
+    data = request.get_json(silent=True) or {}
+    name = str(data.get('name', '')).strip()[:40]
+    try:
+        target = float(data.get('target', 0))
+    except (TypeError, ValueError):
+        target = 0
+    emoji = data.get('emoji') if data.get('emoji') in GOAL_EMOJIS else '🎁'
+    if not name or target <= 0:
+        return jsonify({'error': 'Enter what you want to buy and how much it costs.'}), 400
+    with db() as conn:
+        cur = conn.execute('INSERT INTO goals (user_id, name, target, emoji) VALUES (?, ?, ?, ?)',
+                           (session['user_id'], name, target, emoji))
+    return jsonify({'id': cur.lastrowid, 'name': name, 'target': target, 'emoji': emoji}), 201
+
+
+@app.post('/api/goals/<int:goal_id>/deposit')
+@login_required
+def deposit_to_goal(goal_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        amount = float(data.get('amount', 0))
+    except (TypeError, ValueError):
+        amount = 0
+    date = str(data.get('date', ''))
+    if amount <= 0 or not date:
+        return jsonify({'error': 'Enter a positive amount.'}), 400
+    with db() as conn:
+        goal = conn.execute('SELECT * FROM goals WHERE id = ? AND user_id = ?',
+                            (goal_id, session['user_id'])).fetchone()
+        if goal is None:
+            abort(404)
+        name = f"Saved for {goal['name']}"
+        cur = conn.execute(
+            'INSERT INTO transactions (name, category, date, amount, type, user_id, goal_id) '
+            "VALUES (?, 'Goals', ?, ?, 'savings', ?, ?)",
+            (name, date, amount, session['user_id'], goal_id))
+    return jsonify({'id': cur.lastrowid, 'name': name, 'category': 'Goals', 'date': date, 'amount': amount,
+                    'type': 'savings', 'stock_name': None, 'quantity': None, 'goal_id': goal_id}), 201
+
+
+@app.delete('/api/goals/<int:goal_id>')
+@login_required
+def delete_goal(goal_id):
+    with db() as conn:
+        # The money stays saved; it just isn't linked to a goal any more.
+        conn.execute('UPDATE transactions SET goal_id = NULL WHERE goal_id = ? AND user_id = ?',
+                     (goal_id, session['user_id']))
+        conn.execute('DELETE FROM goals WHERE id = ? AND user_id = ?', (goal_id, session['user_id']))
     return '', 204
 
 
