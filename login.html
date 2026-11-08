@@ -7,28 +7,48 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+  <script>
+    try { document.documentElement.dataset.theme = localStorage.getItem('spendwise-theme') || 'light'; } catch (e) {}
+  </script>
   <style>
+    :root {
+      --bg: #20309A;
+      --surface: #FFFFFF; --surface-2: #F4F5FB; --line: #E3E6F3;
+      --text: #121A4F; --muted: #5F6798;
+      --primary: #20309A; --primary-soft: #E4E7F7;
+      --accent: #BB232B; --accent-dark: #9A1A21; --accent-text: #BB232B;
+    }
+    [data-theme="dark"] {
+      --bg: #0B1033;
+      --surface: #151D52; --surface-2: #1B2463; --line: #26307A;
+      --text: #FFFFFF; --muted: #A3ABDB;
+      --primary: #4F63D8; --primary-soft: #222C72;
+      --accent-dark: #D63A42; --accent-text: #F0626A;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #F4F6F3; font-family: 'DM Sans', sans-serif; color: #1E2A24; }
-    .card { width: min(380px, 92vw); background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 40px rgba(30, 42, 36, 0.08); }
-    .brand { font-family: Manrope, sans-serif; font-weight: 800; font-size: 22px; margin-bottom: 24px; }
-    .brand span { font-weight: 500; color: #29845E; }
-    h1 { font-family: Manrope, sans-serif; font-size: 24px; margin: 0 0 6px; }
-    .subtitle { margin: 0 0 24px; color: #6B7770; font-size: 14px; }
-    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 14px; }
-    input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border: 1px solid #DDE3DF; border-radius: 12px; font: inherit; }
-    input:focus { outline: 2px solid #29845E; border-color: transparent; }
-    button { width: 100%; padding: 13px; border: 0; border-radius: 12px; background: #29845E; color: #fff; font: inherit; font-weight: 600; cursor: pointer; margin-top: 4px; }
-    button:disabled { opacity: 0.6; cursor: wait; }
-    .error { min-height: 20px; color: #C2410C; font-size: 13px; margin: 0 0 8px; }
-    .hint { font-size: 12px; font-weight: 400; color: #6B7770; }
-    .switch { text-align: center; font-size: 14px; color: #6B7770; margin: 18px 0 0; }
-    .switch a { color: #29845E; font-weight: 600; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+    .card { width: min(390px, 92vw); background: var(--surface); border-radius: 22px; padding: 34px; box-shadow: 0 30px 70px rgba(6, 10, 34, 0.4); animation: pop-in .5s cubic-bezier(.5,1.5,.5,1); }
+    @keyframes pop-in { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: Manrope, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -1px; margin-bottom: 26px; }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); }
+    .brand span { font-weight: 500; color: var(--accent-text); }
+    h1 { font-family: Manrope, sans-serif; font-size: 26px; letter-spacing: -.8px; margin: 0 0 6px; }
+    .subtitle { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--muted); }
+    input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font: inherit; color: var(--text); background: var(--surface-2); }
+    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+    button { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; margin-top: 4px; box-shadow: 0 10px 24px rgba(187, 35, 43, .35); transition: transform .15s, background .15s; }
+    button:hover { background: var(--accent-dark); transform: translateY(-2px); }
+    button:disabled { opacity: 0.6; cursor: wait; transform: none; }
+    .error { min-height: 20px; color: var(--accent-text); font-size: 13px; margin: 0 0 8px; }
+    .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+    .switch { text-align: center; font-size: 14px; color: var(--muted); margin: 18px 0 0; }
+    .switch a { color: var(--primary); font-weight: 700; }
   </style>
 </head>
 <body>
   <form class="card" id="auth-form">
-    <div class="brand">spend<span>wise</span></div>
+    <div class="brand"><span class="brand-mark"></span><div>spend<span>wise</span></div></div>
     <h1 id="title">Welcome back</h1>
     <p class="subtitle" id="subtitle">Log in to see your dashboard.</p>
     <label>Username

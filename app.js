@@ -17,8 +17,8 @@ const sampleTransactions = [
 ];
 let transactions = [];
 const categoryColors = {
-  Food: '#E8A36D', Shopping: '#A49AE3', Transport: '#7BA9DF',
-  Education: '#69B88A', Bills: '#D5BD70', Health: '#DF8E9B',
+  Food: '#BB232B', Shopping: '#B15CFF', Transport: '#2EA8FF',
+  Education: '#17A974', Bills: '#F5A524', Health: '#FF4F8B',
   Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE',
   Savings: '#8E8FD8', Stocks: '#6B71BD', 'Emergency fund': '#B3A9E6', Goals: '#C9A3E8'
 };
@@ -86,6 +86,8 @@ function getExpenseCategories() {
   return Object.entries(totals).sort((a, b) => b[1] - a[1]);
 }
 
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 function renderChart() {
   const categories = getExpenseCategories();
   const canvas = document.querySelector('#spending-chart');
@@ -98,7 +100,7 @@ function renderChart() {
         data: categories.map(([, amount]) => amount),
         backgroundColor: categories.map(([category]) => categoryColors[category] || categoryColors.Other),
         borderWidth: 3,
-        borderColor: '#ffffff',
+        borderColor: cssVar('--surface') || '#ffffff', // matches the card in light and dark mode
         hoverOffset: 5
       }]
     },
@@ -446,6 +448,20 @@ goalGrid.addEventListener('click', async event => {
   renderApp();
   showToast(`Goal "${goal.name}" removed.`);
 });
+
+// ---------- Light / dark mode ----------
+const themeToggle = document.querySelector('#theme-toggle');
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.querySelector('.theme-toggle-knob').textContent = theme === 'dark' ? '🌙' : '☀️';
+  themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  try { localStorage.setItem('spendwise-theme', theme); } catch (e) {}
+  if (spendingChart) renderChart(); // redraw so the chart's borders match the new card colour
+}
+themeToggle.addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+});
+applyTheme(document.documentElement.dataset.theme || 'light');
 
 // ---------- Sidebar ----------
 // Highlight the sidebar link for whichever section you're looking at.
