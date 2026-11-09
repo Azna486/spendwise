@@ -423,6 +423,9 @@ a.avatar{text-decoration:none}
 /* =========================================================
    SPENDBUDDY 🦀
    ========================================================= */
+/* SpendBuddy's colours, taken from the theme palette */
+:root{--crab-body:#BB232B;--crab-shade:#8E1820;--crab-highlight:#E0565D;--crab-ink:#121A4F;--crab-cheek:rgba(255,255,255,.28);--crab-coin:#FFFFFF;--crab-coin-ink:#20309A}
+[data-theme="dark"]{--crab-ink:#070B24;--crab-coin-ink:#20309A}
 .buddy-spot{position:relative;width:112px;height:96px;flex:0 0 112px}
 .buddy{position:relative;width:100%;height:100%}
 .buddy-button{display:block;width:100%;height:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:20px}

@@ -1,20 +1,28 @@
 // SpendBuddy 🦀 — a tiny cheeky financial companion that lives on your Overview.
-// Drawn in SVG: warm orange, clean outlines, eyes on stalks, a smirk, and a ₹ coin it won't let go of.
+// Drawn in SVG in the theme colours: clean outlines, eyes on stalks, a smirk, and a ₹ coin it won't let go of.
 // It blinks, follows your cursor, sways, waves on hover, snaps its claws and chats when clicked,
 // shows a mood based on your money, and celebrates (or side-eyes) what you add.
 // app.js uses it through window.SpendBuddy.create(...).
 (function () {
-  const ORANGE = '#F5843B';
-  const SHADE = '#D5652A';
-  const HIGHLIGHT = '#FFB570';
-  const INK = '#4A2414';
+  // Colours come from the theme (see the SPENDBUDDY section in styles.css), so the crab matches the app.
+  const themeColour = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  let BODY, SHADE, HIGHLIGHT, INK, CHEEK, COIN, COIN_INK;
+  function loadColours() {
+    BODY = themeColour('--crab-body', '#BB232B');
+    SHADE = themeColour('--crab-shade', '#8E1820');
+    HIGHLIGHT = themeColour('--crab-highlight', '#E0565D');
+    INK = themeColour('--crab-ink', '#121A4F');
+    CHEEK = themeColour('--crab-cheek', 'rgba(255,255,255,.3)');
+    COIN = themeColour('--crab-coin', '#FFFFFF');
+    COIN_INK = themeColour('--crab-coin-ink', '#20309A');
+  }
   const MOODS = ['happy', 'excited', 'worried', 'sleepy'];
   const instances = new Set();
 
   // A line drawn twice (dark then orange) gives the clean outlined look
   const limb = (d, width = 4.5) =>
     `<path d="${d}" stroke="${INK}" stroke-width="${width + 3}" fill="none" stroke-linecap="round" />` +
-    `<path d="${d}" stroke="${ORANGE}" stroke-width="${width}" fill="none" stroke-linecap="round" />`;
+    `<path d="${d}" stroke="${BODY}" stroke-width="${width}" fill="none" stroke-linecap="round" />`;
 
   // One side's legs, arm and claw. The other side is a mirror copy.
   function side() {
@@ -26,14 +34,15 @@
       <g class="crab-claw">
         <g transform="rotate(-28 22 46)">
           <!-- a round pincer with a notch at the top: one fixed half and one half that snaps -->
-          <path d="M22 46 L26.45 33.78 A13 13 0 0 1 22 59 Z" fill="${ORANGE}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
-          <path class="claw-top" d="M22 46 L22 59 A13 13 0 0 1 17.55 33.78 Z" fill="${ORANGE}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
+          <path d="M22 46 L26.45 33.78 A13 13 0 0 1 22 59 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
+          <path class="claw-top" d="M22 46 L22 59 A13 13 0 0 1 17.55 33.78 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
           <ellipse cx="15.5" cy="42" rx="2.4" ry="4" fill="${HIGHLIGHT}" transform="rotate(20 15.5 42)" />
         </g>
       </g>`;
   }
 
   function draw() {
+    loadColours();
     return `<svg viewBox="0 0 140 120" aria-hidden="true" focusable="false">
       <ellipse cx="70" cy="113" rx="44" ry="5" fill="#000" opacity=".16" />
       <g class="crab">
@@ -42,18 +51,18 @@
 
         <!-- the coin it's hoarding -->
         <g class="crab-coin">
-          <circle cx="126" cy="28" r="7.5" fill="#F5C542" stroke="#B9861F" stroke-width="2.5" />
-          <text x="126" y="31.5" text-anchor="middle" font-size="9.5" font-weight="800" fill="#B9861F" font-family="sans-serif">₹</text>
+          <circle cx="126" cy="28" r="7.5" fill="${COIN}" stroke="${COIN_INK}" stroke-width="2.5" />
+          <text x="126" y="31.5" text-anchor="middle" font-size="9.5" font-weight="800" fill="${COIN_INK}" font-family="sans-serif">₹</text>
         </g>
 
         <!-- body -->
-        <ellipse cx="70" cy="78" rx="40" ry="27" fill="${ORANGE}" stroke="${INK}" stroke-width="3" />
-        <ellipse cx="70" cy="88" rx="32" ry="13" fill="${SHADE}" opacity=".35" />
+        <ellipse cx="70" cy="78" rx="40" ry="27" fill="${BODY}" stroke="${INK}" stroke-width="3" />
+        <ellipse cx="70" cy="88" rx="32" ry="13" fill="${SHADE}" opacity=".45" />
         <ellipse cx="53" cy="65" rx="11" ry="4.5" fill="${HIGHLIGHT}" transform="rotate(-18 53 65)" />
         <g fill="${SHADE}"><circle cx="43" cy="82" r="1.5" /><circle cx="47.5" cy="85.5" r="1.5" /><circle cx="41" cy="87" r="1.5" />
           <circle cx="97" cy="82" r="1.5" /><circle cx="92.5" cy="85.5" r="1.5" /><circle cx="99" cy="87" r="1.5" /></g>
-        <ellipse cx="50" cy="79" rx="6" ry="3.5" fill="#FF6F7D" opacity=".45" />
-        <ellipse cx="90" cy="79" rx="6" ry="3.5" fill="#FF6F7D" opacity=".45" />
+        <ellipse cx="50" cy="79" rx="6" ry="3.5" fill="${CHEEK}" />
+        <ellipse cx="90" cy="79" rx="6" ry="3.5" fill="${CHEEK}" />
 
         <!-- eyes on stalks -->
         ${limb('M61 57 L57 40', 4.5)}${limb('M79 57 L83 40', 4.5)}
@@ -74,18 +83,18 @@
         <g data-mood="excited">
           <g stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"><path d="M46 16 Q54 10 63 14" /><path d="M77 14 Q86 10 94 16" /></g>
           <path d="M58 84 Q70 85 82 84 Q80 99 70 99 Q60 99 58 84 Z" fill="${INK}" stroke="${INK}" stroke-width="2" stroke-linejoin="round" />
-          <path d="M63 94 Q70 89.5 77 94 Q74 98 70 98 Q66 98 63 94 Z" fill="#FF6F7D" />
+          <path d="M63 94 Q70 89.5 77 94 Q74 98 70 98 Q66 98 63 94 Z" fill="${HIGHLIGHT}" />
         </g>
         <g data-mood="worried" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round">
           <path d="M47 21 L62 16" /><path d="M78 16 L93 21" />
           <path d="M60 92 Q65 86 70 90.5 Q75 86 80 92" />
         </g>
         <g data-mood="sleepy">
-          <path d="M45.5 32 A10.5 10.5 0 0 1 66.5 32 Z" fill="${ORANGE}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
-          <path d="M73.5 32 A10.5 10.5 0 0 1 94.5 32 Z" fill="${ORANGE}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
+          <path d="M45.5 32 A10.5 10.5 0 0 1 66.5 32 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
+          <path d="M73.5 32 A10.5 10.5 0 0 1 94.5 32 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
           <ellipse cx="70" cy="90" rx="3.2" ry="3.8" fill="${INK}" />
-          <text x="100" y="16" font-size="14" font-weight="800" fill="#8A93C9" font-family="sans-serif">z</text>
-          <text x="110" y="7" font-size="10" font-weight="800" fill="#8A93C9" font-family="sans-serif">z</text>
+          <text x="100" y="16" font-size="14" font-weight="800" fill="#FFFFFF" font-family="sans-serif">z</text>
+          <text x="110" y="7" font-size="10" font-weight="800" fill="#FFFFFF" font-family="sans-serif">z</text>
         </g>
       </g>
     </svg>`;
@@ -113,6 +122,7 @@
 
     const buddy = {
       root,
+      redraw() { button.innerHTML = draw(); },
       setMood(mood) {
         MOODS.forEach(name => root.classList.remove(`mood-${name}`));
         root.classList.add(`mood-${MOODS.includes(mood) ? mood : 'happy'}`);
@@ -187,6 +197,10 @@
       mischiefLoop();
     }, 20000 + Math.random() * 20000);
   })();
+
+  // Redraw in the new colours when you switch light/dark mode
+  new MutationObserver(() => instances.forEach(buddy => buddy.redraw()))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   window.SpendBuddy = { create };
 })();
