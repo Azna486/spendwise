@@ -55,6 +55,7 @@ let currentFilter = 'all';
 let spendingChart = null;
 let trendChart = null; // declared early: the theme switch may redraw it
 let profile = null;    // your profile (name, photo...) once loaded
+let homeBuddy = null;  // SpendBuddy the crab on the Overview (see buddy.js)
 let toastTimeout;
 
 function getTotals() {
@@ -337,6 +338,7 @@ form.addEventListener('submit', async event => {
   transactions.push(saved);
   closeModal();
   renderApp();
+  buddyReact(type);
   showToast(saved.type === 'savings'
     ? `Added! Your ${saved.category.toLowerCase()} is now ${money(potTotal(saved.category))}.`
     : 'Transaction added successfully.');
@@ -355,7 +357,9 @@ transactionBody.addEventListener('click', async event => {
   const id = Number(button.dataset.deleteId);
   const index = transactions.findIndex(item => item.id === id);
   if (index < 0) return;
-  await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
+  const result = await sendJSON(`/api/transactions/${id}`, 'DELETE');
+  if (!result) return;
+  if (!result.ok) { showToast(result.data.error || 'Could not delete. Try again.'); return; }
   const [removed] = transactions.splice(index, 1);
   renderApp();
   showToast(`Removed “${removed.name}”.`);
@@ -461,21 +465,18 @@ document.querySelector('#cancel-goal-button').addEventListener('click', () => {
 
 goalForm.addEventListener('submit', async event => {
   event.preventDefault();
-  const res = await fetch('/api/goals', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: goalForm.elements.name.value,
-      target: Number(goalForm.elements.target.value),
-      emoji: goalForm.elements.emoji.value
-    })
+  const result = await sendJSON('/api/goals', 'POST', {
+    name: goalForm.elements.name.value,
+    target: Number(goalForm.elements.target.value),
+    emoji: goalForm.elements.emoji.value
   });
-  if (!res.ok) { showToast((await res.json().catch(() => ({}))).error || 'Could not add the goal.'); return; }
-  const goal = await res.json();
+  if (!result) return;
+  if (!result.ok) { showToast(result.data.error || 'Could not add the goal.'); return; }
+  const goal = result.data;
   goals.push(goal);
   goalForm.reset();
   goalForm.classList.add('hidden');
-  renderGoals();
+  renderApp(); // also updates the Overview spotlight and profile stats
   showToast(`New goal: ${goal.emoji} ${goal.name}. Let's make it happen!`);
 });
 
@@ -486,13 +487,11 @@ goalGrid.addEventListener('submit', async event => {
   event.preventDefault();
   const goal = goals.find(item => item.id === Number(depositForm.dataset.goalId));
   const amount = Number(depositForm.elements.amount.value);
-  const res = await fetch(`/api/goals/${goal.id}/deposit`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, date: todayISO() })
-  });
-  if (!res.ok) { showToast('Could not add money. Try again.'); return; }
-  transactions.push(await res.json());
+  const result = await sendJSON(`/api/goals/${goal.id}/deposit`, 'POST', { amount, date: todayISO() });
+  if (result && result.ok && homeBuddy) { homeBuddy.celebrate(); homeBuddy.say(`Closer to your ${goal.name}! 🎯`); }
+  if (!result) return;
+  if (!result.ok) { showToast(result.data.error || 'Could not add money. Try again.'); return; }
+  transactions.push(result.data);
   renderApp();
   const left = goal.target - goalSaved(goal);
   if (left <= 0) launchConfetti();
@@ -507,7 +506,9 @@ goalGrid.addEventListener('click', async event => {
   if (!button) return;
   const goal = goals.find(item => item.id === Number(button.dataset.deleteGoal));
   if (!confirm(`Delete the goal "${goal.name}"? Money you saved for it stays in your savings.`)) return;
-  await fetch(`/api/goals/${goal.id}`, { method: 'DELETE' });
+  const result = await sendJSON(`/api/goals/${goal.id}`, 'DELETE');
+  if (!result) return;
+  if (!result.ok) { showToast(result.data.error || 'Could not delete the goal.'); return; }
   goals = goals.filter(item => item !== goal);
   transactions.forEach(item => { if (item.goal_id === goal.id) item.goal_id = null; });
   renderApp();
@@ -805,6 +806,7 @@ function renderHeadline() {
   if (currentPage !== 'overview') return;
   document.querySelector('#page-title').innerHTML = `${escapeHTML(greetingTitle())}<span>.</span><i class="wave" aria-hidden="true">👋</i>`;
   document.querySelector('#page-subtitle').textContent = personalMessage();
+  if (homeBuddy) homeBuddy.setMood(buddyMood());
 }
 
 function renderSpotlight() {
@@ -1003,6 +1005,72 @@ document.querySelector('#remove-photo-button').addEventListener('click', async (
   showToast('Photo removed.');
 });
 
+// ---------- SpendBuddy 🦀 ----------
+const firstName = () => (profile ? (profile.display_name || profile.username).trim().split(/\s+/)[0] : 'friend');
+
+// Mood follows your money (and the clock)
+function buddyMood() {
+  const hour = new Date().getHours();
+  if (hour >= 23 || hour < 5) return 'sleepy';
+  if (!transactions.length) return 'happy';
+  const totals = getTotals();
+  if (totals.balance < 0) return 'worried';
+  const near = closestGoal();
+  if ((near && near.percent >= 75) || totals.savingsRate >= 20) return 'excited';
+  return 'happy';
+}
+
+// Cheeky things SpendBuddy might say when you click it
+function buddyLines() {
+  const lines = [
+    `Hey ${firstName()}! 👋`,
+    'Snip snip! ✂️ That\'s me trimming your expenses.',
+    'Pinch your pennies, not me! 🦀',
+    'I\'m a crab. Holding on to money is kind of my thing 💰',
+    'Who, me? I didn\'t touch your savings 👀',
+    'Psst… press N. I love new transactions.',
+    'Click me again. I dare you 😏'
+  ];
+  if (!transactions.length) return [...lines, 'No transactions yet? I\'m bored. Add one! 🥱'];
+  const totals = getTotals();
+  const month = monthStats();
+  const near = closestGoal();
+  const streak = loggingStreak();
+  lines.push(totals.balance >= 0
+    ? `You've got ${money(totals.balance)} left to spend. Don't make me snap 😤`
+    : `We're ${money(-totals.balance)} over. Hide the wallet! 🙈`);
+  if (totals.savings > 0) lines.push(`${money(totals.savings)} tucked away. I'm guarding it 🛡️`);
+  if (near) lines.push(`Only ${money(near.goal.target - goalSaved(near.goal))} to go for your ${near.goal.name}! ${near.goal.emoji}`);
+  if (month.top) lines.push(`I saw all that ${month.top[0]} spending 👀 ${money(month.top[1])} this ${month.name}!`);
+  if (month.change !== null) lines.push(month.change <= 0
+    ? `Spending is down ${Math.abs(month.change)}% vs last month. Proud of you 🥹`
+    : `Spending is up ${month.change}% vs last month. Hmm… 🤨`);
+  if (streak > 1) lines.push(`🔥 ${streak}-day streak! Break it and I pinch.`);
+  return lines;
+}
+
+function buddyReact(type) {
+  if (!homeBuddy) return;
+  if (type === 'expense') {
+    homeBuddy.sideEye();
+    homeBuddy.say(Math.random() < 0.5 ? '👀 Spending again? I\'m watching…' : 'Noted. Judging a little 😏');
+    return;
+  }
+  homeBuddy.celebrate();
+  homeBuddy.say(type === 'income' ? 'Ka-ching! 💰🦀' : 'Snip snip, saved! ✨');
+}
+
+let greeted = false;
+function greetWithBuddy() {
+  if (greeted || currentPage !== 'overview' || !homeBuddy) return;
+  greeted = true;
+  setTimeout(() => homeBuddy.say(`Hey ${firstName()}! SpendBuddy here 🦀 Click me!`), 900);
+}
+
+homeBuddy = SpendBuddy.create(document.querySelector('#buddy-home'));
+homeBuddy.setLines(buddyLines);
+homeBuddy.setMood(buddyMood());
+
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
   if (res.status === 401) { window.location.href = '/login'; return; } // not logged in
@@ -1015,6 +1083,7 @@ async function loadTransactions() {
     profile = await me.json();
     fillProfileForm();
     renderProfile();
+    greetWithBuddy();
   }
 }
 

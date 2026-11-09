@@ -14,6 +14,7 @@
     // Apply the saved theme before the page draws, so it never flashes the wrong colours.
     try { document.documentElement.dataset.theme = localStorage.getItem('spendwise-theme') || 'light'; } catch (e) {}
   </script>
+  <script src="buddy.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -54,7 +55,7 @@
 
       <section class="page-heading" id="dashboard">
         <div class="page-heading-main">
-          <a class="avatar hero-avatar" href="#/profile" data-avatar data-views="overview" title="Your profile">SW</a>
+          <div class="buddy-spot" id="buddy-home" data-views="overview"></div>
           <div><p class="eyebrow" id="page-date">TODAY</p><h1 id="page-title">Your money, at a glance<span>.</span></h1><p class="subtitle" id="page-subtitle">Here's what's happening with your finances.</p></div>
         </div>
         <button class="primary-button" id="open-form-button"><span>＋</span> Add transaction</button>

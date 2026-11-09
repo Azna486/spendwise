@@ -1,4 +1,4 @@
-# SpendWise — Milestone 12
+# SpendWise — Milestone 13
 
 A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript, and a Python (Flask) backend with a SQLite database.
 
@@ -14,6 +14,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - **Savings pots** — running totals for Emergency fund, Stocks, and Savings that update as soon as you add a savings transaction.
 - **Real pages** — Overview, Savings, Wishlist, Analytics, and Transactions each have their own page (the browser Back button works too).
 - **Interactive dashboard** — clickable summary cards and chart slices, animated numbers, a month-by-month chart, top-category bars, confetti when you reach a goal, and keyboard shortcuts (N = new transaction, 1–5 = switch pages).
+- **SpendBuddy 🦀** — a tiny cheeky crab on the Overview. Its eyes follow your cursor, it blinks and sways, waves on hover, snaps its claws and chats about your money when clicked, shows your money mood, celebrates income and savings, and side-eyes your spending.
 - **Personal overview** — a greeting with your name and photo, a message based on your own numbers, your closest goal, this month vs last month, a logging streak, and a money tip of the day.
 - **Profile page** — upload or remove a profile photo (cropped to a square automatically), set a display name, bio, and email, see your stats, and change your password. Your photo shows in the sidebar and top bar.
 - **3D effects** — cards tilt towards your mouse with a moving shadow, numbers float above the cards, goal cards flip over to show stats, and the add-transaction pop-up swings open. Turned off automatically on touch screens and when "reduce motion" is on.
@@ -46,6 +47,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - `index.html` — dashboard structure and transaction form.
 - `login.html` — login and sign-up page.
 - `styles.css` — layout, colors, spacing, responsive behavior, and modal styles.
+- `buddy.js` — SpendBuddy the crab (drawn in SVG).
 - `app.js` — calculations, chart rendering, insights, search/filter, and talking to the server (load, add, delete, log out).
 - `main.py` — Flask server: serves the pages, handles accounts, and saves transactions in the database.
 - `spendwise.db` — SQLite database file (created automatically, not saved in Git).
@@ -80,6 +82,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - [x] **Milestone 6** — Savings pots panel showing your Emergency fund, Stocks, and Savings totals.
 - [x] **Milestone 7** — Wishlist goals with progress bars, "Add money", and fun quotes.
 - [x] **Milestone 8** — New royal blue + tomato red theme with a light/dark mode switch. All colours live in the THEME section at the top of `styles.css`.
+- [x] **Milestone 13** — SpendBuddy, the cheeky money crab (`buddy.js`).
 - [x] **Milestone 12** — Personalised Overview: greeting, smart message, goal spotlight, month comparison, streak, and daily tip.
 - [x] **Milestone 11** — Profile page with photo upload, details, stats, and password change.
 - [x] **Milestone 10** — 3D tilt cards, flip-over goal stats, and a swinging pop-up.

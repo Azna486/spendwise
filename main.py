@@ -15,7 +15,7 @@ app.secret_key = os.environ.get('SPENDWISE_SECRET_KEY', 'dev-only-change-me')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024   # biggest upload allowed: 2 MB (profile photos)
 DB = 'spendwise.db'
-PUBLIC_FILES = {'styles.css', 'app.js'}
+PUBLIC_FILES = {'styles.css', 'app.js', 'buddy.js'}
 
 
 def db():
