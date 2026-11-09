@@ -53,7 +53,10 @@
       </header>
 
       <section class="page-heading" id="dashboard">
-        <div><p class="eyebrow" id="page-date">TODAY</p><h1 id="page-title">Your money, at a glance<span>.</span></h1><p class="subtitle" id="page-subtitle">Here's what's happening with your finances.</p></div>
+        <div class="page-heading-main">
+          <a class="avatar hero-avatar" href="#/profile" data-avatar data-views="overview" title="Your profile">SW</a>
+          <div><p class="eyebrow" id="page-date">TODAY</p><h1 id="page-title">Your money, at a glance<span>.</span></h1><p class="subtitle" id="page-subtitle">Here's what's happening with your finances.</p></div>
+        </div>
         <button class="primary-button" id="open-form-button"><span>＋</span> Add transaction</button>
       </section>
 
@@ -81,6 +84,16 @@
           <div class="summary-value" id="savings-value">₹0</div>
           <div class="card-foot"><span class="mini-trend positive">↗</span><span id="savings-caption">0% of income set aside</span></div>
           <div class="savings-track"><span id="savings-track-fill"></span></div>
+        </article>
+      </section>
+
+      <section class="spotlight-grid" aria-label="Just for you" data-views="overview">
+        <article class="panel spotlight tilt" id="goal-spotlight" data-go="wishlist" tabindex="0" role="button" title="Open your wishlist"></article>
+        <article class="panel spotlight tilt" id="month-spotlight" data-go="analytics" tabindex="0" role="button" title="Open analytics"></article>
+        <article class="panel spotlight tip-spotlight">
+          <p class="spotlight-label">💡 Tip of the day</p>
+          <p class="tip-text" id="tip-text"></p>
+          <button type="button" class="tip-button" id="tip-button">Another tip →</button>
         </article>
       </section>
 

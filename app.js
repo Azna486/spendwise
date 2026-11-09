@@ -54,6 +54,7 @@ const toast = document.querySelector('#toast');
 let currentFilter = 'all';
 let spendingChart = null;
 let trendChart = null; // declared early: the theme switch may redraw it
+let profile = null;    // your profile (name, photo...) once loaded
 let toastTimeout;
 
 function getTotals() {
@@ -235,6 +236,7 @@ function renderApp() {
   renderTransactions();
   if (currentPage === 'analytics') { renderTrend(); renderCategoryBars(); }
   renderProfile();
+  renderSpotlight();
 }
 
 function escapeHTML(value) {
@@ -668,6 +670,7 @@ function showPage(page) {
   }
   if (page === 'overview' || page === 'analytics') renderChart();
   if (page === 'analytics') { renderTrend(); renderCategoryBars(); }
+  if (page === 'overview') renderHeadline();
   window.scrollTo({ top: 0 });
 }
 window.addEventListener('hashchange', () => showPage(pageFromHash()));
@@ -741,8 +744,128 @@ goalGrid.addEventListener('click', event => {
   card.querySelector('.goal-back').setAttribute('aria-hidden', String(!flipped));
 });
 
+// ---------- Personal touches on the Overview page ----------
+const localDay = date => date.toLocaleDateString('en-CA'); // "2026-11-09" in your own time zone
+
+function monthStats() {
+  const now = new Date();
+  const thisMonth = localDay(now).slice(0, 7);
+  const lastMonth = localDay(new Date(now.getFullYear(), now.getMonth() - 1, 1)).slice(0, 7);
+  const expensesIn = month => transactions.filter(item => item.type === 'expense' && item.date.startsWith(month));
+  const spent = sum(expensesIn(thisMonth));
+  const lastSpent = sum(expensesIn(lastMonth));
+  const byCategory = {};
+  expensesIn(thisMonth).forEach(item => { byCategory[item.category] = (byCategory[item.category] || 0) + item.amount; });
+  return {
+    name: now.toLocaleDateString('en-IN', { month: 'long' }),
+    spent,
+    change: lastSpent ? Math.round((spent - lastSpent) / lastSpent * 100) : null, // % vs last month
+    top: Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0] || null
+  };
+}
+
+// How many days in a row you've logged at least one transaction (today, or up to yesterday).
+function loggingStreak() {
+  const days = new Set(transactions.map(item => item.date));
+  const day = new Date();
+  if (!days.has(localDay(day))) day.setDate(day.getDate() - 1);
+  let streak = 0;
+  while (days.has(localDay(day))) { streak++; day.setDate(day.getDate() - 1); }
+  return streak;
+}
+
+function closestGoal() {
+  return goals
+    .map(goal => ({ goal, percent: goalSaved(goal) / goal.target * 100 }))
+    .filter(item => item.percent < 100)
+    .sort((a, b) => b.percent - a.percent)[0] || null;
+}
+
+function greetingTitle() {
+  const hour = new Date().getHours();
+  const greeting = hour < 5 ? 'Up late' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
+  const firstName = profile ? (profile.display_name || profile.username).trim().split(/\s+/)[0] : '';
+  return firstName ? `${greeting}, ${firstName}` : greeting;
+}
+
+// One line about YOUR money, picked from whatever is most worth saying right now.
+function personalMessage() {
+  if (!transactions.length) return "Let's get started: add your first transaction and watch this page come alive.";
+  const totals = getTotals();
+  const month = monthStats();
+  const near = closestGoal();
+  if (totals.balance < 0) return `Heads up: you've spent and saved ${money(-totals.balance)} more than you've earned. Time to rebalance.`;
+  if (near && near.percent >= 75) return `You're ${Math.floor(near.percent)}% of the way to your ${near.goal.name}. So close! 🎯`;
+  if (month.change !== null && month.change < 0) return `You've spent ${Math.abs(month.change)}% less than last month so far. Nice work! 🙌`;
+  if (totals.savingsRate >= 20) return `You're putting ${totals.savingsRate}% of your income aside. That's brilliant! 💪`;
+  return "Here's what's happening with your money today.";
+}
+
+function renderHeadline() {
+  if (currentPage !== 'overview') return;
+  document.querySelector('#page-title').innerHTML = `${escapeHTML(greetingTitle())}<span>.</span><i class="wave" aria-hidden="true">👋</i>`;
+  document.querySelector('#page-subtitle').textContent = personalMessage();
+}
+
+function renderSpotlight() {
+  // 1) Closest wishlist goal
+  const goalBox = document.querySelector('#goal-spotlight');
+  const near = closestGoal();
+  if (near) {
+    const percent = Math.floor(near.percent);
+    goalBox.innerHTML = `
+      <p class="spotlight-label">🎯 Closest goal</p>
+      <div class="spotlight-goal">
+        <span class="goal-emoji">${escapeHTML(near.goal.emoji)}</span>
+        <div><strong>${escapeHTML(near.goal.name)}</strong><span>${money(near.goal.target - goalSaved(near.goal))} to go</span></div>
+        <b>${percent}%</b>
+      </div>
+      <div class="goal-track"><span style="width:${percent}%"></span></div>
+      <p class="spotlight-note">“${goalQuote(near.goal, near.percent)}”</p>`;
+  } else if (goals.length) {
+    goalBox.innerHTML = `<p class="spotlight-label">🏆 Wishlist</p><p class="spotlight-big">All goals reached!</p><p class="spotlight-note">Time to dream up a new one?</p>`;
+  } else {
+    goalBox.innerHTML = `<p class="spotlight-label">✨ Wishlist</p><p class="spotlight-big">Dreaming of something?</p><p class="spotlight-note">Add a wishlist goal and watch your progress here.</p>`;
+  }
+
+  // 2) This month vs last month + logging streak
+  const month = monthStats();
+  const streak = loggingStreak();
+  const change = month.change === null
+    ? '<span class="pill">First month tracked</span>'
+    : `<span class="pill ${month.change <= 0 ? 'good' : 'bad'}">${month.change <= 0 ? '↓' : '↑'} ${Math.abs(month.change)}% vs last month</span>`;
+  document.querySelector('#month-spotlight').innerHTML = `
+    <p class="spotlight-label">📅 ${month.name} so far</p>
+    <p class="spotlight-big">${money(month.spent)}<small>spent</small></p>
+    ${change}
+    <p class="spotlight-line">${month.top ? `Most spent on <strong>${escapeHTML(month.top[0])}</strong> (${money(month.top[1])})` : 'No spending yet this month 🎉'}</p>
+    <p class="spotlight-note">${streak ? `🔥 ${streak}-day logging streak. Keep it going!` : 'Log something today to start a streak 🔥'}</p>`;
+}
+
+// 3) Tip of the day (a different one each day; the button shows another)
+const moneyTips = [
+  'Try the 24-hour rule: wait a day before buying anything you don\'t need right now.',
+  'Pay yourself first: move money into savings on the day your income arrives.',
+  'Small daily spends add up. ₹100 a day is ₹36,500 a year.',
+  'Give every rupee a job: spending, saving or investing.',
+  'An emergency fund covering 3–6 months of expenses is a great safety net.',
+  'Cancel subscriptions you haven\'t used in the last month.',
+  'Cook at home one extra night a week and watch your Food category shrink.',
+  'Check your top spending category once a week. Noticing is half the battle.',
+  'Saving ₹437? Round it up to ₹500. Future you will say thanks.',
+  'Celebrate milestones. Progress deserves a small reward.'
+];
+const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+let tipIndex = dayOfYear % moneyTips.length;
+const tipText = document.querySelector('#tip-text');
+tipText.textContent = moneyTips[tipIndex];
+document.querySelector('#tip-button').addEventListener('click', () => {
+  tipIndex = (tipIndex + 1) % moneyTips.length;
+  tipText.style.opacity = 0;
+  setTimeout(() => { tipText.textContent = moneyTips[tipIndex]; tipText.style.opacity = 1; }, 200);
+});
+
 // ---------- Profile ----------
-let profile = null;
 const initials = person => (person.display_name || person.username || '?')
   .split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase();
 
@@ -772,6 +895,7 @@ function renderProfile() {
     ? `Member since ${new Date(`${profile.created_at}T12:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`
     : '';
   document.querySelector('#remove-photo-button').classList.toggle('hidden', !profile.avatar_version);
+  renderHeadline();
   const reached = goals.filter(goal => goalSaved(goal) >= goal.target).length;
   document.querySelector('#profile-stats').innerHTML = [
     ['Transactions', transactions.length],
