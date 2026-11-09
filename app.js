@@ -234,6 +234,7 @@ function renderApp() {
   renderInsights();
   renderTransactions();
   if (currentPage === 'analytics') { renderTrend(); renderCategoryBars(); }
+  renderProfile();
 }
 
 function escapeHTML(value) {
@@ -313,12 +314,23 @@ form.addEventListener('submit', async event => {
       return;
     }
   }
-  const res = await fetch('/api/transactions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(details)
-  });
-  if (!res.ok) { error.textContent = 'Could not save. Try again.'; return; }
+  let res;
+  try {
+    res = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(details)
+    });
+  } catch {
+    error.textContent = 'Can\'t reach the server. Is "python main.py" still running in the terminal?';
+    return;
+  }
+  if (res.status === 401) { window.location.href = '/login'; return; } // logged out
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    error.textContent = data.error || 'Could not save. Try again.';
+    return;
+  }
   const saved = await res.json();
   transactions.push(saved);
   closeModal();
@@ -613,7 +625,8 @@ const pages = {
   savings: { name: 'Savings', title: 'Your savings', subtitle: "Every rupee you've put aside, and where it lives." },
   wishlist: { name: 'Wishlist', title: 'Your wishlist', subtitle: 'Save up for the things you love, one step at a time.' },
   analytics: { name: 'Analytics', title: 'Your spending, decoded', subtitle: 'See where your money goes and how it changes month to month.' },
-  transactions: { name: 'Transactions', title: 'Every transaction', subtitle: 'Search, filter and tidy up your money history.' }
+  transactions: { name: 'Transactions', title: 'Every transaction', subtitle: 'Search, filter and tidy up your money history.' },
+  profile: { name: 'Profile', title: 'Your profile', subtitle: 'Your photo, your details, your money story.' }
 };
 const transactionPanelText = {
   overview: ['Recent transactions', 'Your latest activity'],
@@ -642,6 +655,7 @@ function showPage(page) {
     section.classList.add('view-enter');
   });
   document.querySelectorAll('.nav-link[data-page]').forEach(link => link.classList.toggle('active', link.dataset.page === page));
+  document.querySelector('.profile-row').classList.toggle('active', page === 'profile');
   document.querySelector('#page-title').innerHTML = `${escapeHTML(info.title)}<span>.</span>`;
   document.querySelector('#page-subtitle').textContent = info.subtitle;
   document.querySelector('#breadcrumb-current').textContent = info.name;
@@ -727,6 +741,144 @@ goalGrid.addEventListener('click', event => {
   card.querySelector('.goal-back').setAttribute('aria-hidden', String(!flipped));
 });
 
+// ---------- Profile ----------
+let profile = null;
+const initials = person => (person.display_name || person.username || '?')
+  .split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0, 2).toUpperCase();
+
+// Every element with data-avatar shows your photo, or your initials if you haven't added one.
+function renderAvatars() {
+  document.querySelectorAll('[data-avatar]').forEach(element => {
+    if (profile && profile.avatar_version) {
+      element.innerHTML = `<img src="/api/profile/photo?v=${profile.avatar_version}" alt="" />`;
+    } else {
+      element.textContent = profile ? initials(profile) : 'SW';
+    }
+  });
+}
+
+function renderProfile() {
+  if (!profile) return;
+  const name = profile.display_name || profile.username;
+  document.querySelector('#username-label').textContent = name;
+  document.querySelector('#profile-handle').textContent = `@${profile.username}`;
+  renderAvatars();
+  document.querySelector('#profile-name').textContent = name;
+  document.querySelector('#profile-username').textContent = `@${profile.username}`;
+  const bio = document.querySelector('#profile-bio');
+  bio.textContent = profile.bio || "No bio yet. Tell us what you're saving for!";
+  bio.classList.toggle('empty', !profile.bio);
+  document.querySelector('#profile-since').textContent = profile.created_at
+    ? `Member since ${new Date(`${profile.created_at}T12:00:00`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`
+    : '';
+  document.querySelector('#remove-photo-button').classList.toggle('hidden', !profile.avatar_version);
+  const reached = goals.filter(goal => goalSaved(goal) >= goal.target).length;
+  document.querySelector('#profile-stats').innerHTML = [
+    ['Transactions', transactions.length],
+    ['Saved & invested', money(getTotals().savings)],
+    ['Goals reached', `${reached}/${goals.length}`]
+  ].map(([label, value]) => `<div class="profile-stat"><strong>${value}</strong><span>${label}</span></div>`).join('');
+}
+
+const profileForm = document.querySelector('#profile-form');
+function fillProfileForm() {
+  profileForm.elements.display_name.value = profile.display_name;
+  profileForm.elements.bio.value = profile.bio;
+  profileForm.elements.email.value = profile.email;
+  updateBioCount();
+}
+function updateBioCount() {
+  document.querySelector('#bio-count').textContent = `${profileForm.elements.bio.value.length}/160`;
+}
+profileForm.elements.bio.addEventListener('input', updateBioCount);
+
+// Small helper: send JSON, and turn "server is off" into a friendly message.
+async function sendJSON(url, method, body) {
+  try {
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.status === 401 && url !== '/api/profile/password') { window.location.href = '/login'; return null; }
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, data };
+  } catch {
+    return { ok: false, data: { error: 'Can\'t reach the server. Is "python main.py" still running?' } };
+  }
+}
+
+profileForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const errorText = document.querySelector('#profile-error');
+  errorText.textContent = '';
+  const result = await sendJSON('/api/profile', 'PUT', {
+    display_name: profileForm.elements.display_name.value,
+    bio: profileForm.elements.bio.value,
+    email: profileForm.elements.email.value
+  });
+  if (!result) return;
+  if (!result.ok) { errorText.textContent = result.data.error || 'Could not save. Try again.'; return; }
+  profile = result.data;
+  fillProfileForm();
+  renderProfile();
+  showToast('Profile saved ✨');
+});
+
+const passwordForm = document.querySelector('#password-form');
+passwordForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const errorText = document.querySelector('#password-error');
+  errorText.textContent = '';
+  const { current, new: newPassword, confirm } = passwordForm.elements;
+  if (newPassword.value !== confirm.value) { errorText.textContent = "The two new passwords don't match."; return; }
+  const result = await sendJSON('/api/profile/password', 'POST', { current: current.value, new: newPassword.value });
+  if (!result.ok) { errorText.textContent = result.data.error || 'Could not change the password.'; return; }
+  passwordForm.reset();
+  showToast('Password changed 🔒');
+});
+
+// Photos are cropped to a square and shrunk in the browser before uploading, so they're small and fast.
+function squarePhoto(file, size = 320) {
+  return createImageBitmap(file).then(bitmap => new Promise((resolve, reject) => {
+    const side = Math.min(bitmap.width, bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    canvas.getContext('2d').drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('Could not convert'))), 'image/jpeg', 0.88);
+  }));
+}
+
+const photoInput = document.querySelector('#photo-input');
+photoInput.addEventListener('change', async () => {
+  const file = photoInput.files[0];
+  photoInput.value = '';
+  if (!file) return;
+  let photo;
+  try { photo = await squarePhoto(file); } catch { showToast("Couldn't read that image. Try a JPG or PNG."); return; }
+  const body = new FormData();
+  body.append('photo', photo, 'photo.jpg');
+  const bigAvatar = document.querySelector('#profile-photo');
+  bigAvatar.classList.add('uploading');
+  try {
+    const res = await fetch('/api/profile/photo', { method: 'POST', body });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showToast(data.error || 'Could not upload the photo.'); return; }
+    profile = data;
+    renderProfile();
+    showToast('Looking good! 📸 Photo updated.');
+  } catch {
+    showToast('Can\'t reach the server. Is "python main.py" still running?');
+  } finally {
+    bigAvatar.classList.remove('uploading');
+  }
+});
+
+document.querySelector('#remove-photo-button').addEventListener('click', async () => {
+  const result = await sendJSON('/api/profile/photo', 'DELETE');
+  if (!result) return;
+  if (!result.ok) { showToast(result.data.error || 'Could not remove the photo.'); return; }
+  profile = result.data;
+  renderProfile();
+  showToast('Photo removed.');
+});
+
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
   if (res.status === 401) { window.location.href = '/login'; return; } // not logged in
@@ -735,7 +887,11 @@ async function loadTransactions() {
   if (goalsRes.ok) goals = await goalsRes.json();
   renderApp();
   const me = await fetch('/api/me');
-  if (me.ok) document.querySelector('#username-label').textContent = (await me.json()).username;
+  if (me.ok) {
+    profile = await me.json();
+    fillProfileForm();
+    renderProfile();
+  }
 }
 
 document.querySelector('#logout-button').addEventListener('click', async () => {

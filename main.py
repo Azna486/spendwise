@@ -1,7 +1,9 @@
-from flask import Flask, jsonify, request, send_from_directory, session, redirect, abort
+from flask import Flask, jsonify, request, send_from_directory, session, redirect, abort, Response
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import hashlib
 import os
+import re
 import sqlite3
 
 # static_folder=None: we decide exactly which files the browser may download (see bottom).
@@ -11,6 +13,7 @@ app = Flask(__name__, static_folder=None)
 # For real use, set your own long random value in the SPENDWISE_SECRET_KEY environment variable.
 app.secret_key = os.environ.get('SPENDWISE_SECRET_KEY', 'dev-only-change-me')
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024   # biggest upload allowed: 2 MB (profile photos)
 DB = 'spendwise.db'
 PUBLIC_FILES = {'styles.css', 'app.js'}
 
@@ -68,6 +71,12 @@ def init_db():
         for column, kind in (('stock_name', 'TEXT'), ('quantity', 'REAL'), ('goal_id', 'INTEGER')):
             if column not in columns:
                 conn.execute(f'ALTER TABLE transactions ADD COLUMN {column} {kind}')
+        # Profile details (added later, so older databases get the new columns here).
+        columns = [row['name'] for row in conn.execute('PRAGMA table_info(users)')]
+        for column, kind in (('display_name', 'TEXT'), ('bio', 'TEXT'), ('email', 'TEXT'),
+                             ('avatar', 'BLOB'), ('avatar_type', 'TEXT'), ('created_at', 'TEXT')):
+            if column not in columns:
+                conn.execute(f'ALTER TABLE users ADD COLUMN {column} {kind}')
 
 
 def login_required(view):
@@ -119,7 +128,7 @@ def signup():
     try:
         with db() as conn:
             cur = conn.execute(
-                'INSERT INTO users (username, password_hash) VALUES (?, ?)',
+                "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, date('now'))",
                 (username, generate_password_hash(password)))   # never store the real password
     except sqlite3.IntegrityError:
         return jsonify({'error': 'That username is already taken.'}), 409
@@ -147,7 +156,111 @@ def logout():
 @app.get('/api/me')
 @login_required
 def me():
-    return jsonify({'username': session['username']})
+    with db() as conn:
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    if user is None:          # account no longer exists
+        session.clear()
+        return jsonify({'error': 'Please log in'}), 401
+    return jsonify(profile_json(user))
+
+
+# ---------- Profile ----------
+
+def profile_json(user):
+    avatar = user['avatar']
+    return {
+        'username': user['username'],
+        'display_name': user['display_name'] or '',
+        'bio': user['bio'] or '',
+        'email': user['email'] or '',
+        'created_at': user['created_at'],
+        # changes whenever the photo changes, so the browser fetches the new one instead of a cached copy
+        'avatar_version': hashlib.sha1(avatar).hexdigest()[:10] if avatar else None,
+    }
+
+
+@app.put('/api/profile')
+@login_required
+def update_profile():
+    data = request.get_json(silent=True) or {}
+    display_name = str(data.get('display_name', '')).strip()[:40]
+    bio = str(data.get('bio', '')).strip()[:160]
+    email = str(data.get('email', '')).strip()[:120]
+    if email and not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        return jsonify({'error': 'That email address doesn\'t look right.'}), 400
+    with db() as conn:
+        conn.execute('UPDATE users SET display_name = ?, bio = ?, email = ? WHERE id = ?',
+                     (display_name, bio, email, session['user_id']))
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    return jsonify(profile_json(user))
+
+
+def image_type(data):
+    """Check the file's first bytes, so only real images are accepted (not just files named .jpg)."""
+    if data.startswith(b'\xff\xd8\xff'):
+        return 'image/jpeg'
+    if data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return 'image/png'
+    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+@app.post('/api/profile/photo')
+@login_required
+def upload_photo():
+    file = request.files.get('photo')
+    data = file.read() if file else b''
+    kind = image_type(data)
+    if not kind:
+        return jsonify({'error': 'Please choose a JPG, PNG or WebP image.'}), 400
+    with db() as conn:
+        conn.execute('UPDATE users SET avatar = ?, avatar_type = ? WHERE id = ?', (data, kind, session['user_id']))
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    return jsonify(profile_json(user))
+
+
+@app.delete('/api/profile/photo')
+@login_required
+def remove_photo():
+    with db() as conn:
+        conn.execute('UPDATE users SET avatar = NULL, avatar_type = NULL WHERE id = ?', (session['user_id'],))
+        user = conn.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    return jsonify(profile_json(user))
+
+
+@app.get('/api/profile/photo')
+@login_required
+def get_photo():
+    with db() as conn:
+        user = conn.execute('SELECT avatar, avatar_type FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+    if not user or not user['avatar']:
+        abort(404)
+    response = Response(user['avatar'], mimetype=user['avatar_type'])
+    response.headers['Cache-Control'] = 'private, max-age=31536000'  # safe: the URL changes when the photo does
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
+@app.post('/api/profile/password')
+@login_required
+def change_password():
+    data = request.get_json(silent=True) or {}
+    current = str(data.get('current', ''))
+    new = str(data.get('new', ''))
+    with db() as conn:
+        user = conn.execute('SELECT password_hash FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+        if not check_password_hash(user['password_hash'], current):
+            return jsonify({'error': 'Your current password is wrong.'}), 400
+        if len(new) < 8:
+            return jsonify({'error': 'Your new password needs at least 8 characters.'}), 400
+        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (generate_password_hash(new), session['user_id']))
+    return jsonify({'ok': True})
+
+
+@app.errorhandler(413)
+def too_large(error):
+    return jsonify({'error': 'That file is too big. Please choose one under 2 MB.'}), 413
 
 
 # ---------- Transactions (each user only sees their own) ----------
