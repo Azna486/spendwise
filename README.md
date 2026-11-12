@@ -18,7 +18,7 @@ A beginner-friendly personal finance dashboard built with HTML, CSS, JavaScript,
 - **Personal overview** — a greeting with your name and photo, a message based on your own numbers, your closest goal, this month vs last month, a logging streak, and a money tip of the day.
 - **Profile page** — upload or remove a profile photo (cropped to a square automatically), set a display name, bio, and email, see your stats, and change your password. Your photo shows in the sidebar and top bar.
 - **3D effects** — cards tilt towards your mouse with a moving shadow, numbers float above the cards, goal cards flip over to show stats, and the add-transaction pop-up swings open. Turned off automatically on touch screens and when "reduce motion" is on.
-- **Light / dark mode** — royal blue, white, and tomato red theme with a switch in the top bar. Your choice is remembered.
+- **Light / dark mode** — Emerald & Champagne theme (emerald, sage, ivory, and champagne gold) with a switch in the top bar. Your choice is remembered.
 - **Wishlist goals** — add something you want to buy and its cost, put money towards it, and watch a progress bar fill up with a motivating quote at each stage. Goal money counts as savings.
 - **Stock purchases** — for Savings → Stocks, record the stock name and number of shares. The table shows e.g. "10 shares of TCS · ₹250/share".
 - **Delete transactions** — via the "···" button on each row.

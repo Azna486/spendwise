@@ -17,10 +17,10 @@ const sampleTransactions = [
 ];
 let transactions = [];
 const categoryColors = {
-  Food: '#BB232B', Shopping: '#B15CFF', Transport: '#2EA8FF',
-  Education: '#17A974', Bills: '#F5A524', Health: '#FF4F8B',
-  Salary: '#29845E', Freelance: '#69B6A5', Other: '#AAB4AE',
-  Savings: '#8E8FD8', Stocks: '#6B71BD', 'Emergency fund': '#B3A9E6', Goals: '#C9A3E8'
+  Food: '#B8674A', Shopping: '#8A6BA3', Transport: '#4F7E9C',
+  Education: '#3E8C70', Bills: '#D6B77A', Health: '#B5617A',
+  Salary: '#174C3C', Freelance: '#6FA08A', Other: '#AAB0A6',
+  Savings: '#A8C3A0', Stocks: '#5E8C73', 'Emergency fund': '#D6B77A', Goals: '#C2A36A'
 };
 const categoryIcons = {
   Food: '♨', Shopping: '◇', Transport: '↗', Education: '▤', Bills: '▣',
@@ -606,7 +606,7 @@ document.addEventListener('click', event => {
 // ---------- Confetti ----------
 function launchConfetti() {
   if (reduceMotion()) return;
-  const colours = [cssVar('--accent'), cssVar('--primary'), '#FFFFFF', '#F5A524', '#17A974'];
+  const colours = [cssVar('--gold'), cssVar('--primary'), '#A8C3A0', '#F6F5EF', '#B8975A'];
   for (let i = 0; i < 90; i++) {
     const piece = document.createElement('span');
     piece.className = 'confetti-piece';

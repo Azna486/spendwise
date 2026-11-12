@@ -8,13 +8,13 @@
   const themeColour = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
   let BODY, SHADE, HIGHLIGHT, INK, CHEEK, COIN, COIN_INK;
   function loadColours() {
-    BODY = themeColour('--crab-body', '#BB232B');
-    SHADE = themeColour('--crab-shade', '#8E1820');
-    HIGHLIGHT = themeColour('--crab-highlight', '#E0565D');
-    INK = themeColour('--crab-ink', '#121A4F');
-    CHEEK = themeColour('--crab-cheek', 'rgba(255,255,255,.3)');
-    COIN = themeColour('--crab-coin', '#FFFFFF');
-    COIN_INK = themeColour('--crab-coin-ink', '#20309A');
+    BODY = themeColour('--crab-body', '#D6B77A');
+    SHADE = themeColour('--crab-shade', '#B08F52');
+    HIGHLIGHT = themeColour('--crab-highlight', '#EBD6A8');
+    INK = themeColour('--crab-ink', '#174C3C');
+    CHEEK = themeColour('--crab-cheek', 'rgba(168,195,160,.55)');
+    COIN = themeColour('--crab-coin', '#174C3C');
+    COIN_INK = themeColour('--crab-coin-ink', '#D6B77A');
   }
   const MOODS = ['happy', 'excited', 'worried', 'sleepy'];
   const instances = new Set();
@@ -93,8 +93,8 @@
           <path d="M45.5 32 A10.5 10.5 0 0 1 66.5 32 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
           <path d="M73.5 32 A10.5 10.5 0 0 1 94.5 32 Z" fill="${BODY}" stroke="${INK}" stroke-width="3" stroke-linejoin="round" />
           <ellipse cx="70" cy="90" rx="3.2" ry="3.8" fill="${INK}" />
-          <text x="100" y="16" font-size="14" font-weight="800" fill="#FFFFFF" font-family="sans-serif">z</text>
-          <text x="110" y="7" font-size="10" font-weight="800" fill="#FFFFFF" font-family="sans-serif">z</text>
+          <text x="100" y="16" font-size="14" font-weight="800" fill="${INK}" font-family="sans-serif">z</text>
+          <text x="110" y="7" font-size="10" font-weight="800" fill="${INK}" font-family="sans-serif">z</text>
         </g>
       </g>
     </svg>`;
