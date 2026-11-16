@@ -10,26 +10,28 @@
   <script>
     try { document.documentElement.dataset.theme = localStorage.getItem('spendwise-theme') || 'light'; } catch (e) {}
   </script>
+  <link rel="stylesheet" href="buddy.css" />
   <style>
     :root {
-      --bg: #174C3C;
-      --surface: #FFFFFF; --surface-2: #F6F5EF; --line: #E6E3D7;
-      --text: #202C27; --muted: #66736C;
-      --primary: #174C3C; --primary-soft: #E3ECE3;
-      --accent: #174C3C; --accent-dark: #0F3529; --accent-text: #8A6A2F;
-      --gold: #D6B77A; --danger: #A8533E;
+      --bg: #142B52;
+      --surface: #FFFFFF; --surface-2: #F8F6EE; --line: #E4E2DA;
+      --text: #0A1026; --muted: #5A6479;
+      --primary: #142B52; --primary-soft: #E2E8F2;
+      --accent: #142B52; --accent-dark: #0A1026; --accent-text: #86671F;
+      --gold: #D4B06A; --danger: #A8533E;
     }
+    [data-theme="dark"] body { background: radial-gradient(circle at 18% 12%, rgba(37, 74, 122, .45), transparent 45%), #0A1026; }
     [data-theme="dark"] {
-      --bg: #0C1B16;
-      --surface: #13291F; --surface-2: #19352A; --line: #23423A;
-      --text: #F3F1E8; --muted: #A7B5AC;
-      --primary: #2E7A5E; --primary-soft: #1D3C31;
-      --accent: #2E7A5E; --accent-dark: #3A8C6D; --accent-text: #D6B77A;
+      --bg: #0A1026;
+      --surface: #111B3B; --surface-2: #16244B; --line: #22345E;
+      --text: #F8F6EE; --muted: #A4B0C9;
+      --primary: #254A7A; --primary-soft: #1A2A54;
+      --accent: #254A7A; --accent-dark: #3A64A0; --accent-text: #D4B06A;
       --danger: #E0937C;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
-    .card { width: min(390px, 92vw); background: var(--surface); border-radius: 22px; padding: 34px; box-shadow: 0 30px 70px rgba(5, 20, 15, 0.45); animation: pop-in .5s cubic-bezier(.5,1.5,.5,1); }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at 18% 12%, rgba(93, 126, 168, .35), transparent 42%), radial-gradient(circle at 85% 88%, rgba(212, 176, 106, .14), transparent 40%), linear-gradient(160deg, #142B52, #0A1026 70%); background-attachment: fixed; font-family: 'DM Sans', sans-serif; color: var(--text); }
+    .card { width: min(390px, 92vw); background: var(--surface); border-radius: 22px; padding: 34px; box-shadow: 0 30px 70px rgba(4, 8, 22, 0.45); animation: pop-in .5s cubic-bezier(.5,1.5,.5,1); }
     @keyframes pop-in { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
     .brand { display: flex; align-items: center; gap: 10px; font-family: Manrope, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -1px; margin-bottom: 26px; }
     .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--gold); }
@@ -39,11 +41,24 @@
     label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--muted); }
     input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font: inherit; color: var(--text); background: var(--surface-2); }
     input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
-    button { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; margin-top: 4px; box-shadow: 0 10px 24px rgba(23, 76, 60, .3); transition: transform .15s, background .15s; }
+    button { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; margin-top: 4px; box-shadow: 0 10px 24px rgba(20, 43, 82, .3); transition: transform .15s, background .15s; }
     button:hover { background: var(--accent-dark); transform: translateY(-2px); }
     button:disabled { opacity: 0.6; cursor: wait; transform: none; }
     .error { min-height: 20px; color: var(--danger); font-size: 13px; margin: 0 0 8px; }
     .hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+    .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); margin-bottom: 16px; }
+    .segmented button { margin: 0; padding: 10px 8px; border-radius: 10px; background: transparent; color: var(--muted); box-shadow: none; font-weight: 600; font-size: 13px; }
+    .segmented button:hover { transform: none; background: var(--surface); }
+    .segmented button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 12px rgba(20, 43, 82, .25); }
+    .segmented.small button { padding: 8px; font-size: 12px; }
+    .segmented.small button.active { background: var(--gold); color: #0A1026; }
+    .type-hint { font-size: 12px; color: var(--muted); margin: -8px 0 14px; line-height: 1.45; }
+    input[name=invite_code] { text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+    [hidden] { display: none !important; }
+    .divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 12px; color: var(--muted); font-size: 12px; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+    button.ghost { background: transparent; color: var(--text); border: 1.5px solid var(--line); box-shadow: none; margin: 0; }
+    button.ghost:hover { background: var(--surface-2); border-color: var(--gold); }
     .switch { text-align: center; font-size: 14px; color: var(--muted); margin: 18px 0 0; }
     .switch a { color: var(--primary); font-weight: 700; }
   </style>
@@ -53,52 +68,209 @@
     <div class="brand"><span class="brand-mark"></span><div>spend<span>wise</span></div></div>
     <h1 id="title">Welcome back</h1>
     <p class="subtitle" id="subtitle">Log in to see your dashboard.</p>
+    <div id="signup-options" hidden>
+      <div class="segmented" role="tablist" aria-label="Account type">
+        <button type="button" class="active" data-account="individual">👤 Individual</button>
+        <button type="button" data-account="organisation">🏛️ Organisation</button>
+      </div>
+      <p class="type-hint" id="type-hint">Your own money: spending, budgets and savings.</p>
+      <div id="org-options" hidden>
+        <label id="org-name-field">Organisation name
+          <input name="org_name" maxlength="60" placeholder="e.g. Rotaract Club, Cultural Committee" />
+        </label>
+      </div>
+    </div>
+    <div id="join-fields" hidden>
+      <label>Invite code <span class="hint">(your admin shares this)</span>
+        <input name="invite_code" maxlength="12" placeholder="ABCD-1234" autocomplete="off" />
+      </label>
+      <label>Your name <span class="hint">(how your team will see you)</span>
+        <input name="member_name" maxlength="40" placeholder="e.g. Priya" autocomplete="name" />
+      </label>
+      <p class="type-hint">No password needed. You'll stay signed in on this device, and the same code + name gets you back in.</p>
+    </div>
+    <div id="credential-fields">
     <label>Username
       <input name="username" autocomplete="username" required minlength="3" maxlength="30" />
     </label>
     <label>Password <span class="hint" id="password-hint" hidden>(at least 8 characters)</span>
       <input name="password" type="password" autocomplete="current-password" required minlength="8" />
     </label>
+    </div>
     <p class="error" id="error" role="alert"></p>
     <button type="submit" id="submit-button">Log in</button>
+    <div id="join-entry">
+      <div class="divider"><span>or</span></div>
+      <button type="button" class="ghost" id="join-button">🔑 Join your team with an invite code</button>
+    </div>
     <p class="switch"><span id="switch-text">New here?</span> <a href="#" id="switch-link">Create an account</a></p>
   </form>
 
+  <script src="buddy.js"></script>
   <script>
-    let mode = 'login'; // or 'signup'
+    let mode = 'login';             // 'login', 'signup' or 'join'
+    let accountType = 'individual'; // or 'organisation' (sign-up creates a new organisation)
+    const hints = {
+      individual: 'Your own money: spending, budgets and savings.',
+      organisation: 'Start a shared account for your committee, club or team. You\'ll be the admin and get an invite code to share. (Joining a team? Use "Join with an invite code" on the log-in screen.)'
+    };
     const form = document.querySelector('#auth-form');
     const errorText = document.querySelector('#error');
     const submitButton = document.querySelector('#submit-button');
+    const switchLink = document.querySelector('#switch-link');
+    const screens = {
+      login: { title: 'Welcome back', subtitle: 'Log in to see your dashboard.', switchText: 'New here?', switchLink: 'Create an account' },
+      signup: { title: 'Create your account', subtitle: 'Start tracking your money in seconds.', switchText: 'Already have an account?', switchLink: 'Log in' },
+      join: { title: 'Join your team', subtitle: 'Enter the invite code from your admin and your name.', switchText: 'Have a username and password?', switchLink: 'Log in' }
+    };
 
-    document.querySelector('#switch-link').addEventListener('click', event => {
-      event.preventDefault();
-      mode = mode === 'login' ? 'signup' : 'login';
-      const isLogin = mode === 'login';
-      document.querySelector('#title').textContent = isLogin ? 'Welcome back' : 'Create your account';
-      document.querySelector('#subtitle').textContent = isLogin ? 'Log in to see your dashboard.' : 'Start tracking your money in seconds.';
-      submitButton.textContent = isLogin ? 'Log in' : 'Sign up';
-      document.querySelector('#switch-text').textContent = isLogin ? 'New here?' : 'Already have an account?';
-      event.target.textContent = isLogin ? 'Create an account' : 'Log in';
-      document.querySelector('#password-hint').hidden = isLogin;
-      form.elements.password.autocomplete = isLogin ? 'current-password' : 'new-password';
+    function updateSignupFields() {
+      const isOrg = accountType === 'organisation';
+      document.querySelectorAll('[data-account]').forEach(b => b.classList.toggle('active', b.dataset.account === accountType));
+      document.querySelector('#org-options').hidden = !isOrg;
+      document.querySelector('#type-hint').textContent = hints[accountType];
+      form.elements.org_name.required = mode === 'signup' && isOrg;
+      if (mode === 'signup') submitButton.textContent = isOrg ? 'Create organisation' : 'Sign up';
+    }
+
+    function setMode(next) {
+      mode = next;
+      const screen = screens[mode];
+      document.querySelector('#title').textContent = screen.title;
+      document.querySelector('#subtitle').textContent = screen.subtitle;
+      document.querySelector('#switch-text').textContent = screen.switchText;
+      switchLink.textContent = screen.switchLink;
+      document.querySelector('#signup-options').hidden = mode !== 'signup';
+      document.querySelector('#join-fields').hidden = mode !== 'join';
+      document.querySelector('#credential-fields').hidden = mode === 'join';
+      document.querySelector('#join-entry').hidden = mode !== 'login';
+      document.querySelector('#password-hint').hidden = mode !== 'signup';
+      // only the fields on screen are required
+      form.elements.username.required = form.elements.password.required = mode !== 'join';
+      form.elements.invite_code.required = form.elements.member_name.required = mode === 'join';
+      form.elements.password.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+      submitButton.textContent = mode === 'login' ? 'Log in' : mode === 'join' ? 'Join team' : 'Sign up';
+      updateSignupFields();
       errorText.textContent = '';
+      (mode === 'join' ? (form.elements.invite_code.value ? form.elements.member_name : form.elements.invite_code) : form.elements.username).focus();
+    }
+
+    switchLink.addEventListener('click', event => {
+      event.preventDefault();
+      setMode(mode === 'login' ? 'signup' : 'login');
     });
+    document.querySelector('#join-button').addEventListener('click', () => setMode('join'));
+
+    document.querySelectorAll('[data-account]').forEach(button => button.addEventListener('click', () => {
+      accountType = button.dataset.account; updateSignupFields(); errorText.textContent = '';
+    }));
+    // A link like /login?join=ABCD-1234 opens the join screen with the code filled in
+    const joinCode = new URLSearchParams(location.search).get('join');
+    if (joinCode) {
+      form.elements.invite_code.value = joinCode.toUpperCase();
+      setMode('join');
+    }
+
+
+    // ---------- Fin, the jellyfish, says hi ----------
+    const fin = SpendBuddy.create();
+    const finLines = () => [
+      "I'm Fin! 🌙 I float around and keep an eye on your money.",
+      'Psst… your dashboard is waiting inside 💰',
+      "Drag me around, I don't mind ✨",
+      'I watch budgets with both eyes. All two of them 👀',
+      mode === 'login' ? 'Got an invite code from your team? Tap "Join your team" 🔑'
+        : mode === 'join' ? 'Just your code and your name. No password to forget 🎉' : 'Already have an account? Log in below 👇'
+    ];
+    fin.setLines(finLines);
+    const card = document.querySelector('#auth-form');
+    // start beside the card and wave hello
+    (function placeFin() {
+      const box = card.getBoundingClientRect();
+      const roomRight = innerWidth - box.right > 140;
+      fin.swimTo(roomRight ? box.right + 30 : Math.max(10, box.left - 110), Math.max(20, box.top + 20), 4);
+    })();
+    setTimeout(() => {
+      fin.celebrate();
+      fin.say(joinCode ? "Hi! I'm Fin 🌙 Ooh, an invite! Let's get you into your team 🎉"
+        : "Hi! I'm Fin 🌙 Welcome to SpendWise!", 5000);
+    }, 700);
+
+    // says hi to you by name
+    let greetedName = '';
+    let nameTimer;
+    form.elements.username.addEventListener('input', () => {
+      clearTimeout(nameTimer);
+      nameTimer = setTimeout(() => {
+        const name = form.elements.username.value.trim();
+        if (name.length < 3 || name.toLowerCase() === greetedName) return;
+        greetedName = name.toLowerCase();
+        fin.say(mode === 'login' ? `Hey ${name}! 👋 Good to see you again.` : `Nice to meet you, ${name}! 👋`, 3500);
+      }, 900);
+    });
+    // covers its eyes while you type your password
+    form.elements.password.addEventListener('focus', () => { fin.setMood('shy'); fin.say("I'm not looking! 🙈", 2500); });
+    form.elements.password.addEventListener('blur', () => fin.setMood('happy'));
+    // reacts to the sign-up choices
+    document.querySelector('#switch-link').addEventListener('click', () => {
+      fin.snap();
+      fin.say(mode === 'signup' ? "A new friend! 🎉 Let's set you up." : 'Welcome back! 🌙', 3000);
+    });
+    document.querySelector('#join-button').addEventListener('click', () => {
+      fin.snap();
+      fin.say('Joining your team? Pop in the code 🔑', 3000);
+    });
+    form.elements.member_name.addEventListener('change', () => {
+      const name = form.elements.member_name.value.trim();
+      if (name.length >= 2) fin.say(`Nice to meet you, ${name}! 👋`, 3000);
+    });
+    document.querySelectorAll('[data-account]').forEach(button => button.addEventListener('click', () => {
+      fin.say(button.dataset.account === 'organisation' ? 'A whole team? I love company! 🫶' : 'Just you and me then 🌙', 2800);
+    }));
+    // gets a bit lonely if nothing happens for a while
+    let idleTimer;
+    const resetIdle = () => {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => fin.say('Take your time, I\'ll just float here 🌊', 3500), 25000);
+    };
+    ['input', 'pointerdown', 'keydown'].forEach(type => document.addEventListener(type, resetIdle));
+    resetIdle();
 
     form.addEventListener('submit', async event => {
       event.preventDefault();
       errorText.textContent = '';
       submitButton.disabled = true;
       try {
+        const body = mode === 'join'
+          ? { invite_code: form.elements.invite_code.value, name: form.elements.member_name.value }
+          : { username: form.elements.username.value, password: form.elements.password.value,
+              account_type: accountType, org_action: accountType === 'organisation' ? 'create' : undefined,
+              org_name: form.elements.org_name.value };
         const res = await fetch(`/api/${mode}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: form.elements.username.value, password: form.elements.password.value })
+          body: JSON.stringify(body)
         });
-        if (res.ok) { window.location.href = '/'; return; }
+        if (res.ok) {
+          // Fin celebrates, then takes you in
+          fin.setMood('excited');
+          fin.celebrate();
+          const joined = mode === 'join' ? await res.json().catch(() => ({})) : {};
+          fin.say(mode === 'login' || joined.returning ? 'Welcome back! Taking you in… 🚀'
+            : mode === 'join' ? `Welcome to ${joined.org || 'the team'}! 🎉` : 'Yay, welcome aboard! 🎉', 2000);
+          setTimeout(() => { window.location.href = '/'; }, 1100);
+          return;
+        }
         const data = await res.json().catch(() => ({}));
         errorText.textContent = data.error || 'Something went wrong. Please try again.';
+        fin.setMood('worried');
+        fin.sideEye();
+        fin.say(res.status === 401 ? 'Hmm, that didn\'t work 😟 Check your username and password?' : 'Oops! Have a look at the message 👇', 3500);
+        setTimeout(() => fin.setMood('happy'), 3500);
       } catch {
         errorText.textContent = 'Cannot reach the server. Is "python main.py" running?';
+        fin.setMood('worried');
+        fin.say("I can't reach the server 😟 Is it running?", 3500);
       } finally {
         submitButton.disabled = false;
       }

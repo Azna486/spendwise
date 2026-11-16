@@ -8,3 +8,9 @@ __pycache__/
 
 # Mac junk files
 .DS_Store
+
+# Secrets: your AI API key lives in .env (never commit it)
+.env
+
+# Signs login cookies (made automatically). Never share or commit it.
+.secret_key

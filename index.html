@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="buddy.css" />
+  <link rel="stylesheet" href="fin-chat.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
     // Apply the saved theme before the page draws, so it never flashes the wrong colours.
@@ -16,6 +18,7 @@
   </script>
   <script src="buddy.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="fin-chat.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -27,11 +30,13 @@
       <p class="nav-label">WORKSPACE</p>
       <nav class="nav-links" aria-label="Main navigation">
         <a class="nav-link active" href="#/overview" data-page="overview"><span class="nav-icon">▦</span> Overview</a>
+        <a class="nav-link hidden" href="#/events" data-page="events"><span class="nav-icon">⚑</span> Events</a>
         <a class="nav-link" href="#/savings" data-page="savings"><span class="nav-icon">◈</span> Savings</a>
         <a class="nav-link" href="#/wishlist" data-page="wishlist"><span class="nav-icon">★</span> Wishlist</a>
         <a class="nav-link" href="#/analytics" data-page="analytics"><span class="nav-icon">▥</span> Analytics</a>
         <a class="nav-link" href="#/transactions" data-page="transactions"><span class="nav-icon">↔</span> Transactions</a>
-        <a class="nav-link" href="#/budgets" data-soon><span class="nav-icon">◎</span> Budgets <span class="soon-tag">SOON</span></a>
+        <a class="nav-link" href="#/budgets" data-page="budgets"><span class="nav-icon">◎</span> Budgets</a>
+        <a class="nav-link" href="#/reports" data-page="reports"><span class="nav-icon">❏</span> Reports</a>
       </nav>
       <div class="sidebar-bottom">
         <div class="help-card">
@@ -55,7 +60,6 @@
 
       <section class="page-heading" id="dashboard">
         <div class="page-heading-main">
-          <div class="buddy-spot" id="buddy-home" data-views="overview"></div>
           <div><p class="eyebrow" id="page-date">TODAY</p><h1 id="page-title">Your money, at a glance<span>.</span></h1><p class="subtitle" id="page-subtitle">Here's what's happening with your finances.</p></div>
         </div>
         <button class="primary-button" id="open-form-button"><span>＋</span> Add transaction</button>
@@ -115,6 +119,30 @@
         <div class="goal-grid" id="goal-grid"></div>
       </section>
 
+      <section class="panel budget-overview" aria-label="This month's budget" data-views="budgets">
+        <div class="budget-month">
+          <button type="button" class="budget-month-button" id="budget-prev" aria-label="Previous month">‹</button>
+          <div><p class="spotlight-label">BUDGET FOR</p><h2 id="budget-month-label">This month</h2></div>
+          <button type="button" class="budget-month-button" id="budget-next" aria-label="Next month">›</button>
+        </div>
+        <div class="budget-stats" id="budget-stats"></div>
+        <div class="budget-bar budget-bar-big"><span id="budget-total-fill"></span></div>
+        <p class="budget-note" id="budget-note"></p>
+      </section>
+
+      <section class="panel budgets-panel" aria-label="Category budgets" data-views="budgets">
+        <div class="panel-heading"><div><h2>Category budgets</h2><p id="budgets-summary">Set a monthly limit for each kind of spending</p></div><button type="button" class="goal-new-button" id="new-budget-button">＋ New budget</button></div>
+        <form class="goal-form budget-form hidden" id="budget-form">
+          <select name="category" aria-label="Category"></select>
+          <input name="monthly_limit" required type="number" min="1" step="1" placeholder="Monthly limit (₹)" aria-label="Monthly limit" />
+          <button type="submit" id="budget-save-button">Save budget</button>
+          <button type="button" class="goal-cancel-button" id="cancel-budget-button">Cancel</button>
+          <p class="budget-hint" id="budget-hint"></p>
+        </form>
+        <div class="budget-grid" id="budget-grid"></div>
+        <div class="budget-unplanned" id="budget-unplanned"></div>
+      </section>
+
       <section class="content-grid" data-views="overview analytics">
         <article class="panel spending-panel">
           <div class="panel-heading"><div><h2>Spending breakdown</h2><p>Where your money went · tap a slice to explore</p></div><button class="select-button" id="period-button">This month <span>⌄</span></button></div>
@@ -138,6 +166,75 @@
         </article>
       </section>
 
+      <section class="panel events-panel" id="events-list" aria-label="Events" data-views="events">
+        <div class="panel-heading">
+          <div><h2>Events</h2><p id="events-summary">Give each event an allowance and log every rupee</p></div>
+          <div class="events-actions">
+            <div class="chip-tabs" id="event-filter" role="tablist" aria-label="Show events">
+              <button type="button" class="active" data-event-filter="open">Active</button><button type="button" data-event-filter="closed">Closed</button><button type="button" data-event-filter="all">All</button>
+            </div>
+            <button type="button" class="goal-new-button" id="new-event-button">＋ New event</button>
+          </div>
+        </div>
+        <form class="goal-form event-form hidden" id="event-form">
+          <input name="name" required maxlength="60" placeholder="Event name, e.g. Annual Fest 2026" aria-label="Event name" />
+          <input name="date" required type="date" aria-label="Event date" />
+          <input name="allowance" type="number" min="0" step="1" placeholder="Allowance (₹)" aria-label="Allowance" />
+          <select name="parent_id" aria-label="Part of another event"></select>
+          <button type="submit" id="event-save-button">Create event</button>
+          <button type="button" class="goal-cancel-button" id="cancel-event-button">Cancel</button>
+        </form>
+        <div id="events-dashboard"></div>
+        <div class="event-grid" id="event-grid"></div>
+      </section>
+
+      <section class="panel event-detail off" id="event-detail" aria-label="Event details" data-views="events"></section>
+
+      <section class="panel reimburse-panel off" id="reimburse-panel" aria-label="Reimbursements" data-views="events"></section>
+
+      <section class="panel calendar-panel" aria-label="Spending calendar" data-views="analytics">
+        <div class="panel-heading">
+          <div><h2>Spending calendar</h2><p id="calendar-summary">Darker days = more spending</p></div>
+          <div class="budget-month calendar-nav">
+            <button type="button" class="budget-month-button" id="calendar-prev" aria-label="Previous month">‹</button>
+            <strong id="calendar-month">This month</strong>
+            <button type="button" class="budget-month-button" id="calendar-next" aria-label="Next month">›</button>
+          </div>
+        </div>
+        <div class="calendar-layout">
+          <div>
+            <div class="calendar-weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="calendar-legend"><span>Less</span><i class="lvl-0"></i><i class="lvl-1"></i><i class="lvl-2"></i><i class="lvl-3"></i><i class="lvl-4"></i><span>More</span><span class="calendar-legend-gap"></span><i class="lvl-none"></i><span>No spending</span></div>
+          </div>
+          <aside class="calendar-day" id="calendar-day"></aside>
+        </div>
+      </section>
+
+      <section class="panel report" id="report" aria-label="Monthly report" data-views="reports">
+        <div class="report-top">
+          <div class="budget-month">
+            <button type="button" class="budget-month-button" id="report-prev" aria-label="Previous month">‹</button>
+            <div><p class="spotlight-label">MONTHLY REPORT</p><h2 id="report-title">This month</h2></div>
+            <button type="button" class="budget-month-button" id="report-next" aria-label="Next month">›</button>
+          </div>
+          <button type="button" class="secondary-button report-print" id="report-print">⎙ Print / save as PDF</button>
+        </div>
+        <p class="report-summary" id="report-summary"></p>
+        <div class="report-stats" id="report-stats"></div>
+        <div class="report-grid">
+          <div class="report-block">
+            <h3>Where your money went</h3>
+            <div id="report-categories"></div>
+          </div>
+          <div class="report-block">
+            <h3>Highlights</h3>
+            <ul class="report-highlights" id="report-highlights"></ul>
+          </div>
+        </div>
+        <p class="report-foot" id="report-foot"></p>
+      </section>
+
       <section class="profile-layout" data-views="profile">
         <article class="panel profile-card">
           <div class="profile-photo-wrap">
@@ -156,6 +253,7 @@
           <div class="profile-stats" id="profile-stats"></div>
         </article>
         <div class="profile-forms">
+          <article class="panel profile-panel org-panel off" id="org-panel"></article>
           <article class="panel profile-panel">
             <div class="panel-heading"><div><h2>Edit profile</h2><p>How you show up in SpendWise</p></div></div>
             <form class="profile-form" id="profile-form">
@@ -167,9 +265,9 @@
             </form>
           </article>
           <article class="panel profile-panel">
-            <div class="panel-heading"><div><h2>Change password</h2><p>At least 8 characters</p></div></div>
+            <div class="panel-heading"><div><h2 id="password-title">Change password</h2><p>At least 8 characters</p></div></div>
             <form class="profile-form" id="password-form">
-              <label class="field-label">Current password<input name="current" type="password" autocomplete="current-password" required /></label>
+              <label class="field-label" id="current-password-field">Current password<input name="current" type="password" autocomplete="current-password" required /></label>
               <div class="form-row">
                 <label class="field-label">New password<input name="new" type="password" autocomplete="new-password" minlength="8" required /></label>
                 <label class="field-label">Repeat new password<input name="confirm" type="password" autocomplete="new-password" minlength="8" required /></label>
@@ -178,22 +276,67 @@
               <button class="primary-button" type="submit">Update password</button>
             </form>
           </article>
+          <article class="panel profile-panel" id="buddy-panel">
+            <div class="panel-heading"><div><h2>🌙 Fin, your SpendBuddy</h2><p>Fin the jellyfish floats around the app. Boop him to chat, drag him to move him.</p></div></div>
+            <div class="buddy-setting">
+              <div class="chip-tabs" id="buddy-setting" role="radiogroup" aria-label="Fin the jellyfish">
+                <button type="button" data-buddy-setting="roam">Roaming</button><button type="button" data-buddy-setting="corner">Stay in corner</button><button type="button" data-buddy-setting="hidden">Hidden</button>
+              </div>
+            </div>
+          </article>
+          <article class="panel profile-panel" id="categories-panel">
+            <div class="panel-heading"><div><h2>Your categories</h2><p id="categories-summary">Make SpendWise fit the way you spend</p></div></div>
+            <div class="category-chips" id="category-chips"></div>
+            <form class="category-form" id="category-form">
+              <div class="category-form-row">
+                <select name="icon" aria-label="Icon"></select>
+                <input name="name" maxlength="24" required placeholder="e.g. Pets, Gym, Coffee" aria-label="Category name" />
+                <button class="primary-button" type="submit">＋ Add category</button>
+              </div>
+              <div class="colour-swatches" id="colour-swatches" role="radiogroup" aria-label="Colour"></div>
+              <p class="form-error" id="category-error" role="alert"></p>
+            </form>
+          </article>
+          <article class="panel profile-panel danger-zone" id="delete-panel">
+            <div class="panel-heading"><div><h2>Delete account</h2><p id="delete-summary">Permanently delete your account and all your data.</p></div></div>
+            <button type="button" class="secondary-button danger" id="delete-open-button">Delete my account…</button>
+            <form class="profile-form hidden" id="delete-form">
+              <p class="delete-warning" id="delete-warning"></p>
+              <label class="field-label" id="delete-password-field">Your password<input name="password" type="password" autocomplete="current-password" /></label>
+              <label class="field-label"><span>Type <strong>DELETE</strong> to confirm</span><input name="confirm" autocomplete="off" placeholder="DELETE" /></label>
+              <p class="form-error" id="delete-error" role="alert"></p>
+              <div class="form-row delete-actions">
+                <button type="button" class="secondary-button" id="delete-cancel-button">Cancel</button>
+                <button type="submit" class="danger-button" id="delete-confirm-button" disabled>Delete forever</button>
+              </div>
+            </form>
+          </article>
         </div>
       </section>
 
       <section class="panel transactions-panel" data-views="overview savings transactions">
-        <div class="panel-heading transactions-heading"><div><h2 id="tx-title">Recent transactions</h2><p id="tx-subtitle">Your latest activity</p></div><div class="transaction-actions"><label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Search transactions" aria-label="Search transactions"></label><button class="select-button filter-button" id="filter-button">All types <span>⌄</span></button></div></div>
+        <div class="panel-heading transactions-heading"><div><h2 id="tx-title">Recent transactions</h2><p id="tx-subtitle">Your latest activity</p></div><div class="transaction-actions"><label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="Search transactions" aria-label="Search transactions"></label><button class="select-button filter-button" id="filter-button">All types <span>⌄</span></button><button class="select-button export-button" id="export-button" title="Download these transactions as a CSV file (opens in Excel)">⤓ Export CSV</button></div></div>
         <div class="table-wrap"><table><thead><tr><th>TRANSACTION</th><th>CATEGORY</th><th>DATE</th><th>AMOUNT</th><th></th></tr></thead><tbody id="transactions-body"></tbody></table></div>
         <div class="table-footer"><span id="transaction-count">Showing 6 transactions</span><button class="text-button" id="show-all-button">View all transactions <span>→</span></button></div>
       </section>
-      <footer class="footer"><span>SpendWise <span class="footer-dot">·</span> Built for better money habits</span><span>Tip: press <kbd>N</kbd> to add a transaction <span class="footer-dot">·</span> <kbd>1</kbd>–<kbd>5</kbd> to switch pages</span></footer>
+      <footer class="footer"><span>SpendWise <span class="footer-dot">·</span> Built for better money habits</span><span>Tip: press <kbd>N</kbd> to add a transaction <span class="footer-dot">·</span> <kbd>1</kbd>–<kbd>9</kbd> to switch pages</span></footer>
     </main>
   </div>
 
   <div class="modal-backdrop hidden" id="transaction-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <form class="transaction-form" id="transaction-form">
       <div class="modal-heading"><div><p class="eyebrow">YOUR MONEY, YOUR WAY</p><h2 id="modal-title">Add a transaction</h2></div><button type="button" class="close-button" id="close-modal-button" aria-label="Close form">×</button></div>
-      <div class="form-row"><label class="field-label">Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></label><label class="field-label" id="category-field">Category<select name="category"><option>Food</option><option>Shopping</option><option>Transport</option><option>Education</option><option>Bills</option><option>Health</option><option>Other</option></select></label></div>
+      <div class="form-row" id="type-row"><label class="field-label" id="type-field">Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option><option value="savings">Savings</option></select></label><label class="field-label" id="category-field">Category<select name="category"><option>Food</option><option>Shopping</option><option>Transport</option><option>Education</option><option>Bills</option><option>Health</option><option>Other</option></select></label></div>
+      <div class="form-row hidden" id="event-fields">
+        <label class="field-label" id="event-field">Event<select name="event_id"></select></label>
+        <label class="field-label" id="paid-by-field">Paid by<select name="paid_by"></select></label>
+      </div>
+      <p class="paid-by-hint hidden" id="paid-by-hint">💡 They paid from their own pocket, so this will show under <b>Reimbursements</b> until they're paid back.</p>
+      <div class="quick-category hidden" id="quick-category">
+        <select name="new_icon" aria-label="Icon for the new category"></select>
+        <input name="new_category" maxlength="24" placeholder="New category name, e.g. Pets" aria-label="New category name" />
+        <button type="button" class="secondary-button" id="quick-category-add">Add</button>
+      </div>
       <div class="form-row hidden" id="stock-fields"><label class="field-label">Stock name<input name="stock_name" maxlength="40" placeholder="e.g. TCS" /></label><label class="field-label">Number of shares<input name="quantity" type="number" min="0" step="any" placeholder="10" /></label></div>
       <label class="field-label" id="name-field">Transaction name<input name="name" required maxlength="60" placeholder="e.g. Coffee with friends" /></label>
       <div class="form-row"><label class="field-label">Amount (₹)<input name="amount" required type="number" min="1" step="0.01" placeholder="250" /></label><label class="field-label">Date<input name="date" type="date" required /></label></div>

@@ -1,0 +1,90 @@
+/* Fin the jellyfish — used by index.html and login.html (see buddy.js). */
+/* =========================================================
+   FIN 🌙 — SpendBuddy, the jellyfish that floats around the app (and the login page)
+   ========================================================= */
+:root{
+  --jelly-core:#FFF8E8;      /* glowing centre of the bell */
+  --jelly-light:#BFD0EA;     /* soft moonlight blue */
+  --jelly-deep:#5D7EA8;      /* moonlight blue edge */
+  --jelly-fade:rgba(93,126,168,.12);
+  --jelly-rim:#254A7A;       /* constellation blue outline */
+  --jelly-ink:#142B52;       /* face */
+  --jelly-gold:#D4B06A;      /* starlight gold */
+  --jelly-glow:rgba(240,215,154,.45);
+}
+[data-theme="dark"]{--jelly-light:#9DB6DC;--jelly-fade:rgba(157,182,220,.08);--jelly-glow:rgba(240,215,154,.32)}
+.jelly-buddy{position:fixed;left:0;top:0;z-index:15;width:78px;height:97px;will-change:transform;pointer-events:none;--swim:1.6s;--look-x:0px;--look-y:0px}
+.jelly-buddy.hidden-buddy{display:none}
+.jelly-body{width:100%;height:100%;transition:transform .35s ease-out}
+.jelly-button{pointer-events:auto;display:block;width:100%;height:100%;padding:0;border:0;background:none;cursor:grab;touch-action:none;border-radius:40% 40% 30% 30%}
+.jelly-buddy.dragging .jelly-button{cursor:grabbing}
+/* pages that style every <button> (like the login page) shouldn't restyle Fin */
+.jelly-buddy .jelly-button,.jelly-buddy .jelly-button:hover,.jelly-buddy .jelly-button:disabled{margin:0;box-shadow:none;background:none;color:inherit;transform:none;opacity:1;font:inherit}
+.jelly-button:focus-visible{outline:3px solid var(--jelly-gold);outline-offset:4px}
+.jelly-button svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 14px rgba(20,43,82,.22))}
+/* drawing */
+.jelly-stop-core{stop-color:var(--jelly-core)}
+.jelly-stop-light{stop-color:var(--jelly-light)}
+.jelly-stop-deep{stop-color:var(--jelly-deep)}
+.jelly-stop-fade{stop-color:var(--jelly-deep);stop-opacity:.12}
+.jelly-aura{fill:var(--jelly-glow);filter:blur(9px);transform-box:fill-box;transform-origin:center;animation:jelly-aura calc(var(--swim) * 1.6) ease-in-out infinite}
+.jelly-dome{fill:url(#jelly-bell-fill);fill-opacity:.94;stroke:var(--jelly-rim);stroke-width:1.4;stroke-opacity:.45}
+.jelly-frill{fill:none;stroke:#fff;stroke-width:1.6;stroke-opacity:.6;stroke-linecap:round}
+.jelly-shine{fill:#fff;opacity:.75}
+.jelly-constellation{fill:none;stroke:var(--jelly-gold);stroke-width:.8;stroke-opacity:.7}
+.jelly-star{fill:var(--jelly-gold)}
+.jelly-ribbon{fill:none;stroke:url(#jelly-ribbon);stroke-width:5.5;stroke-linecap:round;opacity:.9}
+.jelly-thread{fill:none;stroke:var(--jelly-gold);stroke-width:1;stroke-linecap:round;opacity:.55}
+.jelly-eyes circle{fill:var(--jelly-ink)}
+.jelly-pupils circle{fill:#fff;transform:translate(var(--look-x),var(--look-y));transition:transform .12s ease-out}
+.jelly-mouth{fill:none;stroke:var(--jelly-ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.jelly-open-mouth{fill:var(--jelly-ink)}
+.jelly-drop{fill:#9DC3EE;stroke:var(--jelly-rim);stroke-width:.6}
+.jelly-z{font:800 9px var(--font,sans-serif);fill:var(--jelly-ink);animation:jelly-z 2.4s ease-in-out infinite}
+.jelly-z.small{font-size:7px;animation-delay:.6s}
+/* one face per mood */
+.jelly-face{display:none}
+.mood-happy .jelly-face[data-mood="happy"],.mood-excited .jelly-face[data-mood="excited"],
+.mood-worried .jelly-face[data-mood="worried"],.mood-sleepy .jelly-face[data-mood="sleepy"],.mood-shy .jelly-face[data-mood="shy"]{display:inline}
+.mood-shy .jelly-button svg{transform:rotate(-12deg);transition:transform .3s}
+.jelly-cover{fill:url(#jelly-ribbon);stroke:var(--jelly-rim);stroke-width:.8;stroke-opacity:.4}
+.jelly-buddy.celebrate .jelly-face{display:none}
+.jelly-buddy.celebrate .jelly-face[data-mood="excited"]{display:inline}
+/* swimming: the bell squeezes and the tentacles ripple */
+.jelly-bell{transform-box:fill-box;transform-origin:50% 100%;animation:jelly-pulse var(--swim) ease-in-out infinite}
+.jelly-tentacles{transform-box:fill-box;transform-origin:50% 0;animation:jelly-trail var(--swim) ease-in-out infinite}
+.jelly-ribbon,.jelly-thread{transform-box:fill-box;transform-origin:50% 0;animation:jelly-sway calc(var(--swim) * 1.3) ease-in-out infinite alternate}
+.r2,.t2{animation-delay:-.3s}.r3,.t3{animation-delay:-.6s}.r4{animation-delay:-.9s}
+@keyframes jelly-pulse{0%,100%{transform:scale(1,1)}45%{transform:scale(1.07,.9)}70%{transform:scale(.96,1.05)}}
+@keyframes jelly-trail{0%,100%{transform:scaleY(1)}45%{transform:scaleY(.9) translateY(-2px)}70%{transform:scaleY(1.06)}}
+@keyframes jelly-sway{from{transform:rotate(-5deg)}to{transform:rotate(6deg)}}
+@keyframes jelly-aura{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.08)}}
+@keyframes jelly-z{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+/* reactions */
+.jelly-buddy.blink .jelly-eyes,.jelly-buddy.blink .jelly-pupils{transform:scaleY(.12);transform-box:fill-box;transform-origin:center}
+.jelly-buddy.booped .jelly-button svg{animation:jelly-boop .55s cubic-bezier(.3,1.6,.5,1)}
+@keyframes jelly-boop{0%{transform:scale(1)}30%{transform:scale(1.18,.82)}60%{transform:scale(.92,1.1)}100%{transform:scale(1)}}
+.jelly-buddy.wiggle .jelly-button svg{animation:jelly-wiggle .6s ease-in-out}
+@keyframes jelly-wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.jelly-buddy.looping .jelly-button svg{animation:jelly-loop 1.2s cubic-bezier(.45,.05,.35,1)}
+@keyframes jelly-loop{0%{transform:rotate(0) translateY(0)}50%{transform:rotate(180deg) translateY(-18px)}100%{transform:rotate(360deg) translateY(0)}}
+.jelly-buddy.celebrate .jelly-button svg{animation:jelly-party 1.5s ease-in-out}
+@keyframes jelly-party{0%{transform:translateY(0) rotate(0)}25%{transform:translateY(-22px) rotate(-12deg)}50%{transform:translateY(0) rotate(360deg)}75%{transform:translateY(-12px) rotate(370deg)}100%{transform:translateY(0) rotate(360deg)}}
+.jelly-buddy.side-eye .jelly-pupils circle{transform:translate(1.6px,-.4px)!important}
+.jelly-buddy.side-eye .jelly-button svg{animation:jelly-shake .5s ease-in-out 2}
+@keyframes jelly-shake{0%,100%{transform:translateX(0)}30%{transform:translateX(-3px)}70%{transform:translateX(3px)}}
+.jelly-buddy.dragging .jelly-ribbon,.jelly-buddy.dragging .jelly-thread{animation-duration:.35s}
+/* stardust trail */
+.jelly-dust{position:fixed;z-index:14;width:5px;height:5px;border-radius:50%;pointer-events:none;background:var(--jelly-gold);box-shadow:0 0 8px 2px var(--jelly-glow);animation:jelly-dust 1.6s ease-out forwards}
+.jelly-dust:nth-of-type(3n){background:#fff;width:4px;height:4px}
+@keyframes jelly-dust{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--drift),-34px) scale(.3)}}
+/* speech bubble (follows the jellyfish, flips to whichever side has room) */
+.jelly-bubble{position:absolute;left:62%;bottom:calc(100% - 6px);width:max-content;max-width:240px;padding:9px 12px;border-radius:14px 14px 14px 4px;background:var(--surface,#fff);color:var(--text,#0A1026);border:1px solid var(--line,#E4E2DA);font:600 12px/1.4 var(--font,"DM Sans",sans-serif);box-shadow:0 10px 26px rgba(10,16,38,.18);opacity:0;transform:translateY(6px) scale(.96);transition:opacity .2s,transform .2s;pointer-events:none}
+.jelly-buddy.talking .jelly-bubble{opacity:1;transform:none}
+.jelly-buddy.bubble-left .jelly-bubble{left:auto;right:62%;border-radius:14px 14px 4px 14px}
+.jelly-buddy.bubble-below .jelly-bubble{bottom:auto;top:calc(100% - 4px);border-radius:4px 14px 14px 14px}
+.jelly-buddy.bubble-left.bubble-below .jelly-bubble{border-radius:14px 4px 14px 14px}
+@media(max-width:760px){.jelly-buddy{width:60px;height:75px}.jelly-bubble{max-width:190px}}
+@media print{.jelly-buddy,.jelly-dust{display:none!important}}
+@media(prefers-reduced-motion:reduce){.jelly-bell,.jelly-tentacles,.jelly-ribbon,.jelly-thread,.jelly-aura,.jelly-z{animation:none}}
+

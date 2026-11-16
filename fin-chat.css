@@ -1,0 +1,100 @@
+/* =========================================================
+   FIN — AI financial assistant (chat panel)
+   Uses SpendWise's own theme variables (styles.css), so it follows
+   Night Sky colours, fonts and light/dark mode automatically.
+   ========================================================= */
+
+/* Floating button (bottom-right) */
+.fin-launcher{position:fixed;right:24px;bottom:24px;z-index:19;display:inline-flex;align-items:center;gap:9px;height:54px;padding:0 18px 0 12px;border:1px solid color-mix(in srgb,var(--gold) 45%,transparent);border-radius:28px;background:linear-gradient(145deg,var(--primary),color-mix(in srgb,var(--primary) 70%,#254A7A));color:#fff;font:700 13px var(--heading);letter-spacing:.2px;cursor:pointer;box-shadow:0 12px 30px rgba(10,16,38,.28),0 0 0 4px color-mix(in srgb,var(--gold) 14%,transparent);transition:transform .2s,box-shadow .2s,padding .2s}
+.fin-launcher:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(10,16,38,.32),0 0 0 6px color-mix(in srgb,var(--gold) 20%,transparent)}
+.fin-launcher:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.fin-launcher svg{width:30px;height:33px;color:#E6EEFA;--fin-icon-face:#142B52;flex:0 0 auto;animation:fin-float 3.2s ease-in-out infinite}
+.fin-launcher.active{padding:0 12px}
+.fin-launcher.active .fin-launcher-label{display:none}
+.fin-unread{position:absolute;top:6px;right:8px;width:11px;height:11px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--primary)}
+.fin-unread[hidden]{display:none}
+@keyframes fin-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+
+/* Panel */
+.fin-chat{position:fixed;right:24px;bottom:92px;z-index:19;width:min(400px,calc(100vw - 32px));height:min(620px,calc(100vh - 120px));display:flex;flex-direction:column;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:20px;box-shadow:0 24px 60px rgba(10,16,38,.28);overflow:hidden;opacity:0;transform:translateY(14px) scale(.98);transform-origin:bottom right;transition:opacity .2s ease,transform .22s cubic-bezier(.2,.8,.2,1);font-family:var(--font)}
+.fin-chat.visible{opacity:1;transform:none}
+.fin-chat[hidden]{display:none}
+
+/* Header */
+.fin-head{display:flex;align-items:center;gap:11px;padding:14px 12px 14px 16px;background:linear-gradient(145deg,var(--primary),color-mix(in srgb,var(--primary) 72%,#254A7A));color:#fff;position:relative}
+.fin-head::after{content:"";position:absolute;inset:auto 0 0 0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.7}
+.fin-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(240,215,154,.35)}
+.fin-avatar svg{width:26px;height:28px;color:#E6EEFA;--fin-icon-face:#142B52}
+.fin-title{flex:1;min-width:0;display:grid;gap:2px}
+.fin-title strong{font:800 16px var(--heading);letter-spacing:1.5px}
+.fin-status{display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,.78)}
+.fin-status i{width:7px;height:7px;border-radius:50%;background:#8FCB9F;box-shadow:0 0 6px #8FCB9F}
+.fin-chat.offline .fin-status i{background:var(--gold);box-shadow:0 0 6px var(--gold)}
+.fin-icon-button{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border:0;border-radius:9px;background:transparent;color:inherit;cursor:pointer;transition:background .15s}
+.fin-icon-button svg{width:18px;height:18px}
+.fin-head .fin-icon-button:hover{background:rgba(255,255,255,.14)}
+.fin-icon-button:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+
+/* Messages */
+.fin-body{flex:1;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:12px;background:var(--bg);scroll-behavior:smooth}
+.fin-msg{display:flex;gap:8px;align-items:flex-end;max-width:100%;animation:fin-in .25s ease-out}
+.fin-msg.user{justify-content:flex-end}
+@keyframes fin-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fin-msg-avatar{width:28px;height:28px;flex:0 0 28px;border-radius:9px;display:grid;place-items:center;background:var(--primary);margin-bottom:18px}
+.fin-msg-avatar svg{width:19px;height:21px;color:#E6EEFA;--fin-icon-face:#142B52}
+.fin-bubble-wrap{display:grid;gap:4px;max-width:84%;min-width:0}
+.fin-msg.user .fin-bubble-wrap{justify-items:end}
+.fin-bubble{padding:10px 13px;border-radius:16px 16px 16px 5px;background:var(--surface);border:1px solid var(--line);font-size:13px;line-height:1.55;color:var(--text);box-shadow:0 2px 8px rgba(10,16,38,.05);overflow-wrap:anywhere}
+.fin-msg.user .fin-bubble{border-radius:16px 16px 5px 16px;background:var(--primary);border-color:var(--primary);color:#fff}
+.fin-bubble p{margin:0}
+.fin-bubble p+p,.fin-bubble p+ul,.fin-bubble p+ol,.fin-bubble ul+p,.fin-bubble ol+p{margin-top:8px}
+.fin-bubble ul,.fin-bubble ol{margin:6px 0 0;padding-left:18px;display:grid;gap:3px}
+.fin-bubble strong{font-weight:700;color:var(--primary)}
+[data-theme="dark"] .fin-bubble strong{color:var(--gold)}
+.fin-msg.user .fin-bubble strong{color:#fff}
+.fin-bubble code{font-size:11.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.fin-msg.error .fin-bubble{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 40%,var(--line));color:var(--text)}
+.fin-msg.notice .fin-bubble{background:var(--gold-soft);border-color:color-mix(in srgb,var(--gold) 50%,var(--line))}
+.fin-meta{display:flex;flex-wrap:wrap;gap:4px 8px;padding:0 4px;font-size:10px;color:var(--muted)}
+.fin-checked{color:var(--success);font-weight:600}
+.fin-retry{display:inline-flex;margin-top:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:5px 10px;font:600 11.5px var(--font);cursor:pointer}
+.fin-retry:hover{background:var(--surface-2)}
+
+/* Typing indicator */
+.fin-typing .fin-bubble{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.fin-dots{display:inline-flex;gap:4px}
+.fin-dots i{width:7px;height:7px;border-radius:50%;background:var(--secondary);animation:fin-dot 1.2s ease-in-out infinite}
+.fin-dots i:nth-child(2){animation-delay:.15s}.fin-dots i:nth-child(3){animation-delay:.3s}
+@keyframes fin-dot{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}
+
+/* Suggested questions */
+.fin-suggestions{display:none;flex-wrap:wrap;gap:7px;padding:10px 14px 4px;background:var(--bg);border-top:1px solid var(--line);max-height:min(230px,40%);overflow-y:auto}
+.fin-suggestions.open{display:flex}
+.fin-chip{border:1px solid color-mix(in srgb,var(--secondary) 40%,var(--line));background:var(--surface);color:var(--text);border-radius:16px;padding:6px 11px;font:600 11.5px var(--font);cursor:pointer;text-align:left;transition:background .15s,border-color .15s,transform .15s}
+.fin-chip:hover{background:var(--gold-soft);border-color:var(--gold);transform:translateY(-1px)}
+.fin-chip:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+
+/* Input */
+.fin-compose{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface)}
+.fin-compose textarea{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font:13px/1.4 var(--font);color:var(--text);background:var(--surface-2);outline:none}
+.fin-compose textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.fin-ideas{color:var(--accent-text);font-size:16px;height:40px;width:36px;flex-basis:36px}
+.fin-ideas:hover{background:var(--surface-2)}
+.fin-send{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;border:0;border-radius:12px;background:var(--primary);color:#fff;cursor:pointer;transition:background .15s,transform .15s}
+.fin-send svg{width:18px;height:18px}
+.fin-send:hover:not(:disabled){transform:translateY(-1px);background:var(--primary-dark)}
+.fin-send:disabled{opacity:.4;cursor:default}
+.fin-foot{margin:0;padding:0 14px 10px;background:var(--surface);font-size:10px;color:var(--muted);text-align:center}
+
+/* Keep the app's pop-up messages clear of the FIN button */
+.toast{bottom:92px}
+
+/* Phones: the panel fills the screen */
+@media(max-width:560px){
+  .fin-launcher{right:14px;bottom:14px;height:50px}
+  .fin-launcher-label{display:none}
+  .fin-launcher{padding:0 10px}
+  .fin-chat{inset:0;width:100%;height:100%;border-radius:0;border:0}
+}
+@media print{.fin-launcher,.fin-chat{display:none!important}}
+@media(prefers-reduced-motion:reduce){.fin-launcher svg,.fin-dots i,.fin-msg{animation:none}.fin-chat{transition:none}}
