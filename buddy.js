@@ -151,6 +151,31 @@
 
     const peekLines = ['Just floating by 🌙', 'Ooh, numbers ✨', 'Comfy spot. Mind if I stay?', 'Peekaboo 👀', 'Wheee 💫', '*gentle bloop*'];
 
+    // ---------- keep out of an area (e.g. the login form, so it never floats over what you type) ----------
+    let keepOutElement = null;
+    const PAD = 14;
+    function keepOutBox() {
+      if (!keepOutElement || !keepOutElement.isConnected) return null;
+      const r = keepOutElement.getBoundingClientRect();
+      return { left: r.left - PAD, top: r.top - PAD, right: r.right + PAD, bottom: r.bottom + PAD };
+    }
+    const overlapsBox = (x, y, box) => x < box.right && x + width() > box.left && y < box.bottom && y + height() > box.top;
+    // nearest spot for its top-left corner that's clear of the area (and still on screen)
+    function clearSpot(x, y) {
+      const box = keepOutBox();
+      if (!box || !overlapsBox(x, y, box)) return { x, y };
+      const b = bounds();
+      const options = [
+        { x: box.left - width(), y }, { x: box.right, y },     // left / right of it
+        { x, y: box.top - height() }, { x, y: box.bottom }    // above / below it
+      ].filter(p => p.x >= b.minX - 1 && p.x <= b.maxX + 1 && p.y >= b.minY - 1 && p.y <= b.maxY + 1);
+      if (!options.length) { // no room anywhere (tiny screen): hide away in the bottom corner
+        return { x: b.maxX, y: b.maxY };
+      }
+      options.sort((p, q) => Math.hypot(p.x - x, p.y - y) - Math.hypot(q.x - x, q.y - y));
+      return options[0];
+    }
+
     function chooseMode() {
       const now = performance.now();
       const mood = MOODS.find(name => root.classList.contains(`mood-${name}`));
@@ -165,7 +190,7 @@
       if (roll < 0.36) { state.mode = 'wander'; state.target = { x: rand(bounds().minX, bounds().maxX), y: rand(bounds().minY + 60, bounds().maxY) }; state.speed = rand(0.9, 1.6); state.until = now + 9000; }
       else if (roll < 0.62) { const spot = somethingToVisit(); state.mode = spot ? 'visit' : 'wander'; state.target = spot || { x: rand(bounds().minX, bounds().maxX), y: rand(bounds().minY, bounds().maxY) }; state.speed = 1.3; state.until = now + 9000; }
       else if (roll < 0.76 && now - pointer.seen < 4000) { state.mode = 'follow'; state.speed = 1.8; state.until = now + rand(4000, 7000); }
-      else if (roll < 0.84) { state.mode = 'loop'; state.until = now + 1300; replay('looping', 1300); sparkle(5, 14); }
+      else if (roll < 0.84 && !(keepOutBox() && overlapsBox(state.x, state.y, keepOutBox()))) { state.mode = 'loop'; state.until = now + 1300; replay('looping', 1300); sparkle(5, 14); }
       else { state.mode = 'rest'; state.target = null; state.until = now + rand(2500, 5000); }
     }
 
@@ -195,6 +220,15 @@
 
       // Steer gently towards the target (slowing down on arrival), like drifting in water
       let ax = 0; let ay = 0;
+      if (state.target && keepOutElement) state.target = clearSpot(state.target.x, state.target.y);
+      // drifted (or was thrown) into the area: swim straight back out
+      if (keepOutElement && state.mode !== 'loop') {
+        const box = keepOutBox();
+        if (box && overlapsBox(state.x, state.y, box)) {
+          const out = clearSpot(state.x, state.y);
+          state.target = out; state.mode = 'home'; state.speed = 4; state.until = now + 1500;
+        }
+      }
       if (state.target && state.mode !== 'loop') {
         const tx = clamp(state.target.x, b.minX, b.maxX); const ty = clamp(state.target.y, b.minY, b.maxY);
         const ex = tx - state.x; const ey = ty - state.y; const dist = Math.hypot(ex, ey);
@@ -260,7 +294,9 @@
       },
       getSetting() { return setting; },
       // swim over to a spot on the screen (x, y = where its top-left should go)
-      swimTo(x, y, speed = 3) { state.mode = 'home'; state.target = { x, y }; state.speed = speed; state.until = performance.now() + 4000; }
+      swimTo(x, y, speed = 3) { state.mode = 'home'; state.target = { x, y }; state.speed = speed; state.until = performance.now() + 4000; },
+      // never float over this element (it can still be dragged there; it swims back out after)
+      keepOutOf(element) { keepOutElement = element; }
     };
     buddy.setSetting(setting);
 

@@ -40,6 +40,10 @@
     .subtitle { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
     label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--muted); }
     input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font: inherit; color: var(--text); background: var(--surface-2); }
+    .pw-wrap { position: relative; display: block; margin-top: 6px; }
+    .pw-wrap input { margin-top: 0; padding-right: 70px; }
+    .pw-toggle { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: auto; margin: 0; padding: 6px 10px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; color: var(--muted); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .pw-toggle:hover { background: var(--surface-2); color: var(--text); transform: translateY(-50%); }
     input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
     button { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; margin-top: 4px; box-shadow: 0 10px 24px rgba(20, 43, 82, .3); transition: transform .15s, background .15s; }
     button:hover { background: var(--accent-dark); transform: translateY(-2px); }
@@ -94,7 +98,10 @@
       <input name="username" autocomplete="username" required minlength="3" maxlength="30" />
     </label>
     <label>Password <span class="hint" id="password-hint" hidden>(at least 8 characters)</span>
-      <input name="password" type="password" autocomplete="current-password" required minlength="8" />
+      <span class="pw-wrap">
+        <input name="password" type="password" autocomplete="current-password" required minlength="8" />
+        <button type="button" class="pw-toggle" id="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+      </span>
     </label>
     </div>
     <p class="error" id="error" role="alert"></p>
@@ -184,6 +191,7 @@
     ];
     fin.setLines(finLines);
     const card = document.querySelector('#auth-form');
+    fin.keepOutOf(card);   // never floats over the boxes you're typing in
     // start beside the card and wave hello
     (function placeFin() {
       const box = card.getBoundingClientRect();
@@ -211,6 +219,17 @@
     // covers its eyes while you type your password
     form.elements.password.addEventListener('focus', () => { fin.setMood('shy'); fin.say("I'm not looking! 🙈", 2500); });
     form.elements.password.addEventListener('blur', () => fin.setMood('happy'));
+    // show / hide what you've typed in the password box
+    const pwToggle = document.querySelector('#pw-toggle');
+    pwToggle.addEventListener('click', () => {
+      const showing = form.elements.password.type === 'text';
+      form.elements.password.type = showing ? 'password' : 'text';
+      pwToggle.textContent = showing ? 'Show' : 'Hide';
+      pwToggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      pwToggle.setAttribute('aria-pressed', String(!showing));
+      form.elements.password.focus();
+      if (!showing) fin.say('Okay, now everyone can see it. Not me though 🙈', 2200);
+    });
     // reacts to the sign-up choices
     document.querySelector('#switch-link').addEventListener('click', () => {
       fin.snap();

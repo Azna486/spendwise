@@ -814,3 +814,11 @@ kbd{border-color:var(--chip-border,var(--on-bg-line));background:var(--on-bg-chi
 .form-row.delete-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px}
 .danger-button{padding:11px 18px;border-radius:12px;border:1px solid var(--danger);background:var(--danger);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .danger-button:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- placeholders while your data loads (no fake numbers) ---------- */
+.loading-dash{opacity:.45}
+/* ---------- Show / Hide password ---------- */
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:64px!important}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:5px 9px;border:0;border-radius:7px;background:transparent;color:var(--muted,#888);font:600 11px var(--font);cursor:pointer}
+.pw-toggle:hover{background:var(--surface-2);color:var(--text)}

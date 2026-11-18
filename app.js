@@ -2121,7 +2121,7 @@ function renderAvatars() {
     if (profile && profile.avatar_version) {
       element.innerHTML = `<img src="/api/profile/photo?v=${profile.avatar_version}" alt="" />`;
     } else {
-      element.textContent = profile ? initials(profile) : 'SW';
+      element.textContent = profile ? initials(profile) : '';
     }
   });
 }
@@ -2251,7 +2251,33 @@ deleteForm.addEventListener('submit', async event => {
   window.location.href = '/login';
 });
 
+// Show / Hide button on every password box (change password, delete account)
+function addPasswordToggles(form) {
+  form.querySelectorAll('input[type="password"]').forEach(input => {
+    const wrap = document.createElement('span');
+    wrap.className = 'pw-wrap';
+    input.replaceWith(wrap);
+    wrap.append(input);
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'pw-toggle'; button.textContent = 'Show';
+    button.setAttribute('aria-label', 'Show password'); button.setAttribute('aria-pressed', 'false');
+    button.addEventListener('click', () => {
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      button.textContent = showing ? 'Show' : 'Hide';
+      button.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+      button.setAttribute('aria-pressed', String(!showing));
+      input.focus();
+    });
+    wrap.append(button);
+    // hide them again whenever the form is cleared
+    form.addEventListener('reset', () => { input.type = 'password'; button.textContent = 'Show'; button.setAttribute('aria-pressed', 'false'); });
+  });
+}
+
 const passwordForm = document.querySelector('#password-form');
+addPasswordToggles(passwordForm);
+addPasswordToggles(document.querySelector('#delete-form'));
 passwordForm.addEventListener('submit', async event => {
   event.preventDefault();
   const errorText = document.querySelector('#password-error');
