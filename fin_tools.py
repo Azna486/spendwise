@@ -364,6 +364,31 @@ def get_events(ctx: FinanceContext, include_closed: bool = False) -> dict:
             'note': 'A main event includes its sub-events. Allowance falls back to the sum of sub-event allowances.'}
 
 
+def get_reminders(ctx: FinanceContext, days_ahead: int = 60) -> dict:
+    """Upcoming and overdue reminders (bills, payments) with how many days until each is due."""
+    days_ahead = max(1, min(int(days_ahead or 60), 366))
+    rows = ctx.conn.execute('SELECT * FROM reminders WHERE user_id = ? AND done_at IS NULL ORDER BY due_date',
+                            (ctx.scope,)).fetchall()
+    items = []
+    for row in rows:
+        due = date.fromisoformat(row['due_date'])
+        days = (due - ctx.today).days
+        if days > days_ahead:
+            continue
+        items.append({'title': row['title'], 'amount': r2(row['amount']) if row['amount'] is not None else None,
+                      'due_date': row['due_date'], 'days_until_due': days,
+                      'status': 'overdue' if days < 0 else 'due_today' if days == 0 else 'due_soon' if days <= 3 else 'upcoming',
+                      'repeats': row['repeat']})
+    total = sum(item['amount'] or 0 for item in items if item['days_until_due'] <= 30)
+    return {'reminders': items, 'count': len(items), 'total_due_in_next_30_days_incl_overdue': r2(total),
+            'note': 'Only reminders the user added. Paid ones are not listed (repeating ones move to their next date).'}
+
+
+def create_reminder(ctx: FinanceContext, **inputs) -> dict:
+    """Never runs by itself: FIN proposes it, and the user taps "Add reminder" in the chat to save it."""
+    raise PermissionError('needs approval')
+
+
 # ---------------------------------------------------------------- registry
 
 @dataclass
@@ -418,6 +443,22 @@ TOOLS: dict[str, Tool] = {tool.name: tool for tool in [
          'Savings pots (Emergency fund, Savings, Stocks, Goals) totals, money saved this month, and wishlist savings '
          'goals with target, saved, remaining and progress.',
          NO_INPUT, get_savings_and_goals),
+    Tool('get_reminders',
+         "The user's reminders: bills and payments with due date, amount, days until due, overdue/due today/soon "
+         'status and whether they repeat. Use for "what bills are coming up", "what do I need to pay".',
+         {'type': 'object', 'properties': {'days_ahead': {'type': 'integer', 'minimum': 1, 'maximum': 366,
+                                                          'description': 'How far ahead to look, default 60 days.'}}},
+         get_reminders),
+    Tool('create_reminder',
+         'Propose a new reminder (a bill, payment, or anything due on a date). It is NOT saved until the user taps '
+         '"Add reminder" on the card shown in the chat. Work out due_date from today\'s date.',
+         {'type': 'object', 'properties': {
+             'title': {'type': 'string', 'description': 'Short, e.g. "Pay rent" or "Electricity bill".'},
+             'due_date': {'type': 'string', 'description': 'When it is due, YYYY-MM-DD.'},
+             'amount': {'type': 'number', 'description': 'Amount in rupees, only if the user said it.'},
+             'repeat': {'type': 'string', 'enum': ['none', 'weekly', 'monthly', 'yearly'], 'description': 'Default none.'}},
+          'required': ['title', 'due_date']},
+         create_reminder, kind='write'),
     Tool('get_events',
          '(Organisation accounts only.) Events and sub-events with allowance, spent, money collected, what is left, status and (organisations) '
          'money owed back to members.',

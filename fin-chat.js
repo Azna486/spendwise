@@ -9,13 +9,16 @@
     'Am I exceeding my budget?',
     'Compare my spending over the last three months.',
     'Help me create a savings plan.',
-    'Where can I reduce my expenses?'
+    'Where can I reduce my expenses?',
+    'What bills are coming up?',
+    'Remind me to pay rent on the 1st of every month.'
   ];
   const TOOL_LABELS = {
     get_financial_overview: 'overview', get_spending_by_category: 'categories', get_monthly_summary: 'monthly totals',
     search_transactions: 'transactions', get_budget_status: 'budgets', get_savings_and_goals: 'savings & goals',
-    get_events: 'events'
+    get_events: 'events', get_reminders: 'reminders'
   };
+  const REPEAT_TEXT = { none: '', weekly: 'Every week', monthly: 'Every month', yearly: 'Every year' };
   const MAX_CHARS = 2000;
   const STORE_KEY = 'spendwise-fin-chat';
 
@@ -116,7 +119,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </form>
-    <p class="fin-foot">FIN reads your SpendWise data to answer (read-only). AI can make mistakes. Check important numbers.</p>`;
+    <p class="fin-foot">FIN reads your SpendWise data to answer. It only changes things (like adding a reminder) when you tap to approve. AI can make mistakes. Check important numbers.</p>`;
   document.body.append(launcher, panel);
 
   const list = panel.querySelector('#fin-messages');
@@ -130,7 +133,59 @@
   // ---------- messages ----------
   function scrollToEnd() { list.scrollTop = list.scrollHeight; }
 
-  function addMessage({ role, content, time = nowIso(), tools = [], kind = '' }) {
+  // A change FIN suggested (only reminders for now). Nothing is saved until you tap the button.
+  function actionCard(message, index) {
+    const action = message.actions[index];
+    if (action.tool !== 'create_reminder') return null;
+    const input = action.input || {};
+    const card = document.createElement('div');
+    card.className = `fin-action ${action.state || 'pending'}`;
+    const when = input.due_date ? new Date(`${input.due_date}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '?';
+    const amount = Number(input.amount) > 0 ? ` · ₹${Number(input.amount).toLocaleString('en-IN')}` : '';
+    const repeat = REPEAT_TEXT[input.repeat] ? ` · ↻ ${REPEAT_TEXT[input.repeat]}` : '';
+    const footer = {
+      pending: `<div class="fin-action-buttons"><button type="button" data-act="add">🔔 Add reminder</button><button type="button" data-act="skip" class="ghost">No thanks</button></div>`,
+      done: '<p class="fin-action-state">✓ Added to your reminders</p>',
+      skipped: '<p class="fin-action-state">Not added</p>'
+    }[action.state || 'pending'];
+    card.innerHTML = `<p class="fin-action-label">New reminder</p>
+      <strong>${escapeText(input.title || 'Reminder')}</strong>
+      <span>${escapeText(when + amount + repeat)}</span>
+      <p class="fin-action-error" role="alert"></p>${footer}`;
+    card.addEventListener('click', async event => {
+      const button = event.target.closest('[data-act]');
+      if (!button || (action.state && action.state !== 'pending')) return;
+      if (button.dataset.act === 'skip') {
+        action.state = 'skipped';
+      } else {
+        button.disabled = true;
+        const res = await fetch('/api/reminders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) })
+          .catch(() => null);
+        const data = res ? await res.json().catch(() => ({})) : {};
+        if (!res || !res.ok) {
+          button.disabled = false;
+          card.querySelector('.fin-action-error').textContent = data.error || "Couldn't save it. Try again?";
+          return;
+        }
+        action.state = 'done';
+        window.dispatchEvent(new CustomEvent('spendwise:reminders-changed'));
+      }
+      save();
+      card.replaceWith(actionCard(message, index));
+    });
+    return card;
+  }
+
+  function addMessage(message) {
+    const row = drawMessage(message);
+    (message.actions || []).forEach((_, index) => {
+      const card = actionCard(message, index);
+      if (card) row.querySelector('.fin-bubble-wrap').insertBefore(card, row.querySelector('.fin-meta'));
+    });
+    return row;
+  }
+
+  function drawMessage({ role, content, time = nowIso(), tools = [], kind = '' }) {
     const row = document.createElement('div');
     row.className = `fin-msg ${role} ${kind}`;
     const who = role === 'user' ? 'You' : 'FIN';
@@ -182,7 +237,7 @@
       role: 'assistant',
       content: `Hi${name ? ` ${name}` : ''}! I'm **FIN**, your SpendWise financial assistant 🌙\n\n` +
         `I can look at ${isOrgAccount() ? "your organisation's" : 'your'} real transactions, budgets and ${isOrgAccount() ? 'events' : 'savings goals'} ` +
-        'to answer questions, spot where your money goes and help you plan. I can only read your data. I never change anything.\n\n' +
+        'to answer questions, spot where your money goes and help you plan. I only read your data. The one thing I can do is set reminders for bills and payments, and only after you tap to approve.\n\n' +
         'Try one of these, or ask me anything:'
     });
     renderSuggestions(true);
@@ -241,7 +296,8 @@
         addError(data.error || 'Something went wrong. Please try again.', res.status !== 400 && data.code !== 'not_configured');
         return;
       }
-      const reply = { role: 'assistant', content: data.reply, time: data.time || nowIso(), tools: data.tools_used || [] };
+      const reply = { role: 'assistant', content: data.reply, time: data.time || nowIso(), tools: data.tools_used || [],
+                      actions: (data.pending_actions || []).map(action => ({ ...action, state: 'pending' })) };
       addMessage(reply);
       history.push(reply);
       save();
@@ -264,7 +320,7 @@
       status = await res.json();
     } catch (e) { status = null; }
     panel.classList.toggle('offline', Boolean(status && !status.available));
-    statusText.textContent = status && !status.available ? 'AI not set up yet' : 'Your financial assistant · read-only';
+    statusText.textContent = status && !status.available ? 'AI not set up yet' : 'Your financial assistant';
   }
 
   async function open() {

@@ -143,6 +143,22 @@
         <div class="budget-unplanned" id="budget-unplanned"></div>
       </section>
 
+      <section class="panel reminders-panel" id="reminders-panel" data-views="overview" aria-label="Reminders">
+        <div class="panel-heading">
+          <div><div class="insight-heading"><span class="sparkle">🔔</span><h2>Reminders</h2></div><p id="reminders-subtitle">Bills and payments Fin will nudge you about</p></div>
+          <button type="button" class="select-button" id="add-reminder-button">＋ Add reminder</button>
+        </div>
+        <form class="reminder-form hidden" id="reminder-form" novalidate>
+          <label class="field-label reminder-title">What is it?<input name="title" maxlength="80" placeholder="e.g. Electricity bill, Pay Riya back" /></label>
+          <label class="field-label"><span>Amount <span class="field-hint-inline">(optional)</span></span><input name="amount" type="number" min="1" step="0.01" placeholder="₹" /></label>
+          <label class="field-label">Due on<input name="due_date" type="date" /></label>
+          <label class="field-label">Repeat<select name="repeat"><option value="none">Just once</option><option value="weekly">Every week</option><option value="monthly">Every month</option><option value="yearly">Every year</option></select></label>
+          <p class="form-error reminder-error" id="reminder-error" role="alert"></p>
+          <div class="reminder-form-actions"><button type="button" class="secondary-button" id="reminder-cancel">Cancel</button><button type="submit" class="primary-button" id="reminder-save">Save reminder</button></div>
+        </form>
+        <ul class="reminder-list" id="reminder-list"></ul>
+      </section>
+
       <section class="content-grid" data-views="overview analytics">
         <article class="panel spending-panel">
           <div class="panel-heading"><div><h2>Spending breakdown</h2><p>Where your money went · tap a slice to explore</p></div><button class="select-button" id="period-button">This month <span>⌄</span></button></div>

@@ -2389,6 +2389,11 @@ function buddyLines() {
   if (close.length) close.forEach(check => lines.push(`Careful! ${check.category} is at ${check.percent}%. Only ${money(check.monthly_limit - check.spent)} left 🫣`));
   if (checks.length && !over.length && !close.length) lines.push(`All ${checks.length} budget${checks.length === 1 ? '' : 's'} on track. Smooth sailing! 🌊✨`);
   if (!checks.length) lines.push('No budgets yet? Give me a limit to guard 🛡️ (Budgets page!)');
+  // upcoming reminders (next 7 days)
+  reminders.filter(item => daysFromToday(item.due_date) <= 7).slice(0, 2).forEach(item => {
+    const days = daysFromToday(item.due_date);
+    lines.push(`Don't forget: ${item.title}${item.amount ? ` (${money(item.amount)})` : ''} ${days < 0 ? 'is overdue 👀' : days === 0 ? 'is due today 🔔' : days === 1 ? 'is due tomorrow 💡' : `is due in ${days} days 🌙`}`);
+  });
   return lines;
 }
 
@@ -2457,6 +2462,139 @@ document.querySelector('#buddy-setting').addEventListener('click', event => {
 });
 renderBuddySetting();
 
+// ---------- Reminders 🔔 (bills and payments Fin nudges you about) ----------
+let reminders = [];
+let editingReminder = null;
+const reminderForm = document.querySelector('#reminder-form');
+const reminderList = document.querySelector('#reminder-list');
+const daysFromToday = iso => Math.round((new Date(`${iso}T00:00:00`) - new Date(`${todayISO()}T00:00:00`)) / 86400000);
+const repeatLabel = { weekly: 'every week', monthly: 'every month', yearly: 'every year' };
+
+function dueLabel(iso) {
+  const days = daysFromToday(iso);
+  if (days < -1) return `${-days} days overdue`;
+  if (days === -1) return 'Overdue since yesterday';
+  if (days === 0) return 'Due today';
+  if (days === 1) return 'Due tomorrow';
+  if (days <= 6) return `Due in ${days} days · ${new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short' })}`;
+  return `Due ${prettyDate(iso)}`;
+}
+const urgency = iso => { const d = daysFromToday(iso); return d < 0 ? 'overdue' : d === 0 ? 'today' : d <= 3 ? 'soon' : 'later'; };
+
+async function loadReminders() {
+  const res = await fetch('/api/reminders');
+  if (!res.ok) return;
+  reminders = await res.json();
+  renderReminders();
+}
+
+function renderReminders() {
+  document.querySelector('#reminders-subtitle').textContent = isOrg()
+    ? 'Bills and payments for your team. Fin nudges everyone when they\'re due'
+    : 'Bills and payments Fin will nudge you about';
+  if (!reminders.length) {
+    reminderList.innerHTML = `<li class="reminder-empty">Nothing to remember yet. Add a bill here, or ask FIN: <em>"remind me to pay rent on the 1st"</em> 🌙</li>`;
+    return;
+  }
+  reminderList.innerHTML = reminders.map(item => `
+    <li class="reminder-item ${urgency(item.due_date)}" data-reminder-id="${item.id}">
+      <span class="reminder-dot" aria-hidden="true"></span>
+      <div class="reminder-text">
+        <strong>${escapeHTML(item.title)}${item.amount ? ` <span class="reminder-amount">${money(item.amount)}</span>` : ''}</strong>
+        <span>${dueLabel(item.due_date)}${item.repeat !== 'none' ? ` · ↻ ${repeatLabel[item.repeat]}` : ''}</span>
+      </div>
+      <div class="reminder-actions">
+        <button type="button" class="reminder-done" data-reminder-action="done" title="${item.repeat === 'none' ? 'Mark as done' : 'Paid: move to the next date'}">✓ ${item.amount ? 'Paid' : 'Done'}</button>
+        <button type="button" class="icon-action" data-reminder-action="edit" title="Edit" aria-label="Edit ${escapeHTML(item.title)}">✎</button>
+        <button type="button" class="icon-action" data-reminder-action="delete" title="Delete" aria-label="Delete ${escapeHTML(item.title)}">✕</button>
+      </div>
+    </li>`).join('');
+}
+
+function openReminderForm(item = null) {
+  editingReminder = item;
+  reminderForm.reset();
+  reminderForm.elements.title.value = item ? item.title : '';
+  reminderForm.elements.amount.value = item && item.amount ? item.amount : '';
+  reminderForm.elements.due_date.value = item ? item.due_date : todayISO();
+  reminderForm.elements.repeat.value = item ? item.repeat : 'none';
+  document.querySelector('#reminder-save').textContent = item ? 'Save changes' : 'Save reminder';
+  document.querySelector('#reminder-error').textContent = '';
+  reminderForm.classList.remove('hidden');
+  reminderForm.elements.title.focus();
+}
+const closeReminderForm = () => { reminderForm.classList.add('hidden'); editingReminder = null; };
+
+document.querySelector('#add-reminder-button').addEventListener('click', () =>
+  reminderForm.classList.contains('hidden') || editingReminder ? openReminderForm() : closeReminderForm());
+document.querySelector('#reminder-cancel').addEventListener('click', closeReminderForm);
+reminderForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const body = {
+    title: reminderForm.elements.title.value, amount: reminderForm.elements.amount.value,
+    due_date: reminderForm.elements.due_date.value, repeat: reminderForm.elements.repeat.value
+  };
+  const result = editingReminder
+    ? await sendJSON(`/api/reminders/${editingReminder.id}`, 'PUT', body)
+    : await sendJSON('/api/reminders', 'POST', body);
+  if (!result.ok) { document.querySelector('#reminder-error').textContent = result.data.error || 'Could not save that.'; return; }
+  const wasEditing = Boolean(editingReminder);
+  closeReminderForm();
+  await loadReminders();
+  showToast(wasEditing ? 'Reminder updated 🔔' : 'Got it! Fin will nudge you 🔔');
+  if (!wasEditing && homeBuddy) homeBuddy.say(`Noted! I'll remind you about "${result.data.title}" 🔔`, 3500);
+});
+
+reminderList.addEventListener('click', async event => {
+  const button = event.target.closest('[data-reminder-action]');
+  if (!button) return;
+  const id = Number(button.closest('[data-reminder-id]').dataset.reminderId);
+  const item = reminders.find(r => r.id === id);
+  if (!item) return;
+  const action = button.dataset.reminderAction;
+  if (action === 'edit') { openReminderForm(item); return; }
+  if (action === 'delete') {
+    if (!confirm(`Delete the reminder "${item.title}"?`)) return;
+    await sendJSON(`/api/reminders/${id}`, 'DELETE');
+    await loadReminders();
+    showToast('Reminder deleted');
+    return;
+  }
+  if (action === 'done') {
+    const result = await sendJSON(`/api/reminders/${id}/done`, 'POST', { today: todayISO() });
+    if (!result.ok) { showToast(result.data.error || 'Could not update that.'); return; }
+    await loadReminders();
+    if (result.data.done) showToast(`Ticked off: ${item.title} ✓`);
+    else showToast(`${item.title}: next one ${prettyDate(result.data.reminder.due_date)} 🔁`);
+    if (homeBuddy) { homeBuddy.setMood('excited'); homeBuddy.say(['Look at you, on top of things! ✨', 'One less thing to worry about 🌙', 'Paid and proud 💪'][Math.floor(Math.random() * 3)], 3000); setTimeout(() => homeBuddy.setMood(buddyMood()), 3200); }
+  }
+});
+// FIN's chat adds reminders too (after you tap "Add reminder" there)
+window.addEventListener('spendwise:reminders-changed', loadReminders);
+
+// Fin lowkey nudges you about anything overdue or due within 2 days (once per reminder per visit).
+function reminderNudge() {
+  if (!homeBuddy || homeBuddy.getSetting() === 'hidden') return;
+  const today = todayISO();
+  let nudged = [];
+  try { nudged = JSON.parse(sessionStorage.getItem('fin-nudged') || '[]'); } catch (e) {}
+  const due = reminders
+    .filter(item => daysFromToday(item.due_date) <= 2 && !(item.snooze_until && item.snooze_until > today))
+    .filter(item => !nudged.includes(`${item.id}:${item.due_date}`));
+  if (!due.length) return;
+  const item = due[0]; // the most urgent (they're sorted by date)
+  const days = daysFromToday(item.due_date);
+  const what = `${item.title}${item.amount ? ` (${money(item.amount)})` : ''}`;
+  const line = days < 0 ? `Psst… ${what} was due ${days === -1 ? 'yesterday' : `${-days} days ago`} 👀`
+    : days === 0 ? `Psst… ${what} is due today 🔔`
+    : days === 1 ? `Heads up: ${what} is due tomorrow 💡`
+    : `Lowkey reminder: ${what} is due in 2 days 🌙`;
+  homeBuddy.say(due.length > 1 ? `${line} (+${due.length - 1} more on your Overview)` : line, 7000);
+  nudged.push(`${item.id}:${item.due_date}`);
+  try { sessionStorage.setItem('fin-nudged', JSON.stringify(nudged)); } catch (e) {}
+}
+setInterval(reminderNudge, 20 * 60 * 1000); // check again every 20 minutes while the app is open
+
 async function loadTransactions() {
   const res = await fetch('/api/transactions');
   if (res.status === 401) { window.location.href = '/login'; return; } // not logged in
@@ -2483,6 +2621,8 @@ async function loadTransactions() {
     renderProfile();
     greetWithBuddy();
   }
+  await loadReminders();
+  setTimeout(reminderNudge, greeted ? 8000 : 2000); // after Fin's hello
 }
 
 document.querySelector('#logout-button').addEventListener('click', async () => {

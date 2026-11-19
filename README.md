@@ -166,3 +166,11 @@ Profile → **Delete account** (at the bottom). You type `DELETE`, plus your pas
 - **Organisation admin:** the whole organisation is deleted, including its data and every member's account.
 
 Members who joined with just an invite code can **Add a password** on their profile, then log in with their @username too.
+
+## Reminders 🔔
+
+On the **Overview** page, **Reminders** keeps track of bills and payments: what it is, an optional amount, the due date, and whether it repeats (weekly, monthly or yearly).
+- **Fin nudges you**: when something is overdue or due within 2 days, Fin mentions it in a speech bubble (once per reminder per visit), and slips upcoming ones into what he says when you boop him.
+- **✓ Paid / Done**: a one-off reminder is ticked off; a repeating one moves on to its next date (monthly ones keep their day, e.g. the 31st becomes the 28th/30th in shorter months).
+- **Ask FIN**: "remind me to pay rent on the 1st of every month, 15000". FIN shows a card, and the reminder is only saved when you tap **Add reminder**. FIN can also answer "what bills are coming up?".
+- Organisation accounts share their reminders with the whole team.

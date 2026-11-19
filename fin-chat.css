@@ -98,3 +98,18 @@
 }
 @media print{.fin-launcher,.fin-chat{display:none!important}}
 @media(prefers-reduced-motion:reduce){.fin-launcher svg,.fin-dots i,.fin-msg{animation:none}.fin-chat{transition:none}}
+
+/* a change FIN suggests (a reminder): saved only when you tap the button */
+.fin-action{display:grid;gap:3px;padding:11px 12px;border-radius:12px;border:1px dashed var(--gold,#D4B06A);background:var(--surface);font-size:12.5px;color:var(--text)}
+.fin-action-label{margin:0 0 2px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-text,#86671F)}
+.fin-action strong{font-size:13.5px}
+.fin-action span{color:var(--muted)}
+.fin-action-buttons{display:flex;gap:8px;margin-top:8px}
+.fin-action-buttons button{padding:7px 12px;border-radius:9px;border:1px solid var(--primary);background:var(--primary);color:#fff;font:600 12px inherit;font-family:inherit;cursor:pointer}
+.fin-action-buttons button.ghost{background:transparent;color:var(--text);border-color:var(--line)}
+.fin-action-buttons button:disabled{opacity:.6;cursor:wait}
+.fin-action-state{margin:6px 0 0;font-weight:600;color:var(--muted)}
+.fin-action.done{border-style:solid}
+.fin-action.done .fin-action-state{color:var(--accent-text,#86671F)}
+.fin-action-error{margin:0;color:var(--danger,#A8533E);font-size:11.5px}
+.fin-action-error:empty{display:none}

@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import timedelta, date
+import calendar
 from flask import Flask, jsonify, request, send_from_directory, session, redirect, abort, Response, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
@@ -92,6 +93,20 @@ def init_db():
             UNIQUE (user_id, name)
         )''')
         # One monthly spending limit per expense category, per user.
+        # Reminders: bills and payments Fin nudges you about (shared by an organisation, like everything else)
+        conn.execute('''CREATE TABLE IF NOT EXISTS reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            title TEXT NOT NULL,
+            amount REAL,
+            due_date TEXT NOT NULL,
+            repeat TEXT NOT NULL DEFAULT 'none',
+            anchor_day INTEGER,
+            snooze_until TEXT,
+            done_at TEXT,
+            created_by INTEGER,
+            created_at TEXT NOT NULL
+        )''')
         conn.execute('''CREATE TABLE IF NOT EXISTS budgets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL REFERENCES users(id),
@@ -977,6 +992,158 @@ def delete_category(category_id):
 # A budget is a monthly spending limit for one expense category, e.g. Food: ₹8,000.
 # How much you've spent is worked out in the browser from your expense transactions.
 
+
+
+# ---------- Reminders (bills, payments, anything with a due date) ----------
+REMINDER_REPEATS = ('none', 'weekly', 'monthly', 'yearly')
+
+
+def parse_day(value):
+    try:
+        return date.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+        return None
+
+
+def client_today():
+    """The visitor's own date (sent by the browser) if it's within a day of the server's; else the server's.
+    Keeps "today" right for people in India when the server runs on UTC."""
+    sent = parse_day(request.args.get('today') or (request.get_json(silent=True) or {}).get('today'))
+    server = date.today()
+    return sent if sent and abs((sent - server).days) <= 1 else server
+
+
+def add_months(day, months, anchor_day):
+    index = day.year * 12 + day.month - 1 + months
+    year, month = divmod(index, 12)
+    month += 1
+    return date(year, month, min(anchor_day or day.day, calendar.monthrange(year, month)[1]))
+
+
+def next_due(due, repeat, anchor_day):
+    if repeat == 'weekly':
+        return due + timedelta(days=7)
+    if repeat == 'monthly':
+        return add_months(due, 1, anchor_day)
+    if repeat == 'yearly':
+        return add_months(due, 12, anchor_day)
+    return due
+
+
+def reminder_fields(data):
+    """Check what was sent for a reminder. Returns (fields, error)."""
+    title = ' '.join(str(data.get('title', '')).split())[:80]
+    if not title:
+        return None, 'What should Fin remind you about?'
+    due = parse_day(data.get('due_date'))
+    if due is None:
+        return None, 'Pick the date it\'s due.'
+    if not (2000 <= due.year <= 2100):
+        return None, 'That date looks off.'
+    amount = data.get('amount')
+    if amount in (None, ''):
+        amount = None
+    else:
+        try:
+            amount = round(float(amount), 2)
+        except (TypeError, ValueError):
+            return None, 'The amount should be a number.'
+        if not (0 < amount <= 1_000_000_000):
+            return None, 'The amount should be more than ₹0.'
+    repeat = str(data.get('repeat') or 'none').lower()
+    if repeat not in REMINDER_REPEATS:
+        return None, 'Repeat should be once, weekly, monthly or yearly.'
+    return {'title': title, 'amount': amount, 'due_date': due.isoformat(), 'repeat': repeat,
+            'anchor_day': due.day}, None
+
+
+def reminder_json(row):
+    return {key: row[key] for key in ('id', 'title', 'amount', 'due_date', 'repeat', 'snooze_until')}
+
+
+def get_reminder(conn, reminder_id):
+    return conn.execute('SELECT * FROM reminders WHERE id = ? AND user_id = ? AND done_at IS NULL',
+                        (reminder_id, scope_id())).fetchone()
+
+
+@app.get('/api/reminders')
+@login_required
+def list_reminders():
+    with db() as conn:
+        rows = conn.execute('SELECT * FROM reminders WHERE user_id = ? AND done_at IS NULL ORDER BY due_date, id',
+                            (scope_id(),)).fetchall()
+    return jsonify([reminder_json(r) for r in rows])
+
+
+@app.post('/api/reminders')
+@login_required
+def add_reminder():
+    fields, error = reminder_fields(request.get_json(silent=True) or {})
+    if error:
+        return jsonify({'error': error}), 400
+    with db() as conn:
+        if conn.execute('SELECT COUNT(*) FROM reminders WHERE user_id = ? AND done_at IS NULL', (scope_id(),)).fetchone()[0] >= 200:
+            return jsonify({'error': 'That\'s a lot of reminders! Tick some off first.'}), 400
+        new_id = conn.execute(
+            'INSERT INTO reminders (user_id, title, amount, due_date, repeat, anchor_day, created_by, created_at) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (scope_id(), fields['title'], fields['amount'], fields['due_date'], fields['repeat'], fields['anchor_day'],
+             g.user['id'], date.today().isoformat())).lastrowid
+        row = conn.execute('SELECT * FROM reminders WHERE id = ?', (new_id,)).fetchone()
+    return jsonify(reminder_json(row)), 201
+
+
+@app.put('/api/reminders/<int:reminder_id>')
+@login_required
+def edit_reminder(reminder_id):
+    fields, error = reminder_fields(request.get_json(silent=True) or {})
+    if error:
+        return jsonify({'error': error}), 400
+    with db() as conn:
+        if get_reminder(conn, reminder_id) is None:
+            return jsonify({'error': 'Reminder not found.'}), 404
+        conn.execute('UPDATE reminders SET title = ?, amount = ?, due_date = ?, repeat = ?, anchor_day = ?, snooze_until = NULL '
+                     'WHERE id = ?', (fields['title'], fields['amount'], fields['due_date'], fields['repeat'],
+                                      fields['anchor_day'], reminder_id))
+        row = conn.execute('SELECT * FROM reminders WHERE id = ?', (reminder_id,)).fetchone()
+    return jsonify(reminder_json(row))
+
+
+@app.post('/api/reminders/<int:reminder_id>/done')
+@login_required
+def finish_reminder(reminder_id):
+    """Paid / done. A repeating reminder moves on to its next date; a one-off one is ticked off."""
+    with db() as conn:
+        row = get_reminder(conn, reminder_id)
+        if row is None:
+            return jsonify({'error': 'Reminder not found.'}), 404
+        if row['repeat'] == 'none':
+            conn.execute('UPDATE reminders SET done_at = ? WHERE id = ?', (client_today().isoformat(), reminder_id))
+            return jsonify({'done': True})
+        due = next_due(date.fromisoformat(row['due_date']), row['repeat'], row['anchor_day'])
+        conn.execute('UPDATE reminders SET due_date = ?, snooze_until = NULL WHERE id = ?', (due.isoformat(), reminder_id))
+        row = conn.execute('SELECT * FROM reminders WHERE id = ?', (reminder_id,)).fetchone()
+    return jsonify({'done': False, 'reminder': reminder_json(row)})
+
+
+@app.post('/api/reminders/<int:reminder_id>/snooze')
+@login_required
+def snooze_reminder(reminder_id):
+    """Fin stays quiet about it until tomorrow."""
+    with db() as conn:
+        if get_reminder(conn, reminder_id) is None:
+            return jsonify({'error': 'Reminder not found.'}), 404
+        until = (client_today() + timedelta(days=1)).isoformat()
+        conn.execute('UPDATE reminders SET snooze_until = ? WHERE id = ?', (until, reminder_id))
+    return jsonify({'snooze_until': until})
+
+
+@app.delete('/api/reminders/<int:reminder_id>')
+@login_required
+def delete_reminder(reminder_id):
+    with db() as conn:
+        conn.execute('DELETE FROM reminders WHERE id = ? AND user_id = ?', (reminder_id, scope_id()))
+    return jsonify({'ok': True})
 
 
 @app.get('/api/budgets')
