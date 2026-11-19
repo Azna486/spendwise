@@ -822,3 +822,7 @@ kbd{border-color:var(--chip-border,var(--on-bg-line));background:var(--on-bg-chi
 .pw-wrap input{padding-right:64px!important}
 .pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);padding:5px 9px;border:0;border-radius:7px;background:transparent;color:var(--muted,#888);font:600 11px var(--font);cursor:pointer}
 .pw-toggle:hover{background:var(--surface-2);color:var(--text)}
+
+/* ---------- Log out on the Profile page ---------- */
+.profile-card .logout-button{width:100%;margin-top:18px;color:var(--danger);border-color:var(--line)}
+.profile-card .logout-button:hover{background:var(--danger-soft);border-color:var(--danger)}

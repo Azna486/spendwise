@@ -34,7 +34,9 @@
     .card { width: min(390px, 92vw); background: var(--surface); border-radius: 22px; padding: 34px; box-shadow: 0 30px 70px rgba(4, 8, 22, 0.45); animation: pop-in .5s cubic-bezier(.5,1.5,.5,1); }
     @keyframes pop-in { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
     .brand { display: flex; align-items: center; gap: 10px; font-family: Manrope, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -1px; margin-bottom: 26px; }
-    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--gold); }
+    .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--primary); display: flex; align-items: flex-end; gap: 3px; padding: 6px; flex: 0 0 auto; }
+    .brand-mark i { display: block; width: 4px; border-radius: 4px; background: var(--gold); }
+    .brand-mark i:nth-child(1) { height: 8px; } .brand-mark i:nth-child(2) { height: 13px; } .brand-mark i:nth-child(3) { height: 17px; }
     .brand span { font-weight: 500; color: var(--accent-text); }
     h1 { font-family: Manrope, sans-serif; font-size: 26px; letter-spacing: -.8px; margin: 0 0 6px; }
     .subtitle { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
@@ -69,7 +71,7 @@
 </head>
 <body>
   <form class="card" id="auth-form">
-    <div class="brand"><span class="brand-mark"></span><div>spend<span>wise</span></div></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><div>spend<span>wise</span></div></div>
     <h1 id="title">Welcome back</h1>
     <p class="subtitle" id="subtitle">Log in to see your dashboard.</p>
     <div id="signup-options" hidden>

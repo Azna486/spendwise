@@ -2487,6 +2487,7 @@ async function loadTransactions() {
 
 document.querySelector('#logout-button').addEventListener('click', async () => {
   await fetch('/api/logout', { method: 'POST' });
+  try { sessionStorage.clear(); } catch (e) {}   // forget FIN's chat in this tab
   window.location.href = '/login';
 });
 loadTransactions();

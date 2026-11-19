@@ -55,7 +55,7 @@
     <main class="main-content" id="top">
       <header class="topbar">
         <div class="breadcrumb">Workspace <span>/</span> <strong id="breadcrumb-current">Overview</strong></div>
-        <div class="topbar-right"><button class="icon-button" aria-label="Notifications">♧</button><button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Light / dark mode"><span class="theme-toggle-knob">☀️</span></button><button class="select-button" id="logout-button">Log out</button><a class="avatar small" href="#/profile" data-avatar title="Your profile"></a></div>
+        <div class="topbar-right"><button type="button" class="theme-toggle" id="theme-toggle" aria-label="Switch to dark mode" title="Light / dark mode"><span class="theme-toggle-knob">☀️</span></button><a class="avatar small" href="#/profile" data-avatar title="Your profile"></a></div>
       </header>
 
       <section class="page-heading" id="dashboard">
@@ -149,7 +149,7 @@
           <div class="chart-area"><div class="donut-wrap"><canvas id="spending-chart" aria-label="Expenses by category" role="img"></canvas><div class="donut-center"><span>Total spent</span><strong id="donut-total">₹ …</strong><small>this month</small></div></div><div class="legend-list" id="category-legend"></div></div>
         </article>
         <article class="panel insights-panel">
-          <div class="panel-heading"><div><div class="insight-heading"><span class="sparkle">✦</span><h2>Smart insights</h2></div><p>Little things worth noticing</p></div><span class="new-tag">BETA</span></div>
+          <div class="panel-heading"><div><div class="insight-heading"><span class="sparkle">✦</span><h2>Smart insights</h2></div><p>Little things worth noticing</p></div></div>
           <div class="insight-list" id="insights-list"></div>
           <div class="insight-note"><span>ⓘ</span> Insights are based on your sample transactions, not financial advice.</div>
         </article>
@@ -251,6 +251,7 @@
             <button type="button" class="text-button" id="remove-photo-button">Remove photo</button>
           </div>
           <div class="profile-stats" id="profile-stats"></div>
+          <button type="button" class="secondary-button logout-button" id="logout-button"><span aria-hidden="true">⎋</span> Log out</button>
         </article>
         <div class="profile-forms">
           <article class="panel profile-panel org-panel off" id="org-panel"></article>
